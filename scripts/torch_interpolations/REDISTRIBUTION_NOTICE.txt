@@ -1,0 +1,3 @@
+Copy of torch_interpolations scripts, written by sbarratt (https://github.com/sbarratt/torch_interpolations).
+
+Tuan Nguyen does not own the code to this package, and these scripts are only copied here because the package cannot be installed through standard package managers. This code is not modified from its original form. Please read the README.MD and LICENSE.MD files to see the original author's guidance and terms and conditions.
