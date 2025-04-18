@@ -59,6 +59,14 @@ def xtomu(x):
     return 100*(np.sign(x)*np.abs(x)**2.0+0.2)
     
 def base_itp_moments(res_dir):
+    '''
+    Loads precomputed rate moments and returns interpolation functions.
+    
+    Parameters
+    ----------
+    res_dir : str
+        The directory containing the precomputed rate moments.
+    '''
     with open(os.path.join(res_dir,"itp_ranges.pkl"), "rb") as handle:
         ranges_dict = pickle.load(handle)
     
@@ -118,6 +126,18 @@ def base_itp_moments(res_dir):
     return FE,FI,ME,MI,CE,CI
     
 def opto_itp_moments(res_dir,L,CVL):
+    '''
+    Loads precomputed rate moments in the presence of optogenetic stimulation and returns interpolation functions.
+    
+    Parameters
+    ----------
+    res_dir : str
+        The directory containing the precomputed rate moments.
+    L : float
+        Mean optogenetic input strength.
+    CVL : float
+        Coefficient of variation of optogenetic input strength.
+    '''
     with open(os.path.join(res_dir,"itp_ranges.pkl"), "rb") as handle:
         ranges_dict = pickle.load(handle)
     
@@ -161,6 +181,31 @@ def opto_itp_moments(res_dir,L,CVL):
     return FL,ML,CL
 
 def R(M1,M2,mu1,mu2,Sig1,Sig2,k):
+    '''
+    Compute the cross-correlation of two functions, whose expectation values are computed from M1 and M2
+    
+    Parameters
+    ----------
+    M1 : function
+        Expectation value function of the first function. It should take as input the mean and variance of the input distribution.
+    M2 : function
+        Expectation value function of the second function. See M1.
+    mu1 : float
+        Mean of the input to the first function.
+    mu2 : float
+        Mean of the input to the second function.
+    Sig1 : float
+        Variance of the input to the first function.
+    Sig2 : float
+        Variance of the input to the second function.
+    k : float
+        Covariance of the input to the two functions.
+        
+    Returns
+    -------
+    float
+        The cross-correlation of the two functions.
+    '''
     c = np.sign(k)*np.fmin(np.abs(k)/np.sqrt(Sig1*Sig2),1)
     sig1 = np.sign(c)*np.sqrt(Sig1*np.abs(c))
     sig2 = np.sqrt(Sig2*np.abs(c))
@@ -171,6 +216,31 @@ def R(M1,M2,mu1,mu2,Sig1,Sig2,k):
                 M2(mu2+sig2*x,Del2),-8,8)[0]
 
 def R_int(M1,M2,mu1,mu2,Sig1,Sig2,k,x):
+    '''
+    Compute the integrand of the Gaussian integral needed to compute the cross-correlation of two functions, whose expectation values are computed from M1 and M2
+    
+    Parameters
+    ----------
+    M1 : function
+        Expectation value function of the first function. It should take as input the mean and variance of the input distribution.
+    M2 : function
+        Expectation value function of the second function. See M1.
+    mu1 : float
+        Mean of the input to the first function.
+    mu2 : float
+        Mean of the input to the second function.
+    Sig1 : float
+        Variance of the input to the first function.
+    Sig2 : float
+        Variance of the input to the second function.
+    k : float
+        Covariance of the input to the two functions.
+        
+    Returns
+    -------
+    float
+        The integrand of the Gaussian integral needed to compute the cross-correlation of the two functions.
+    '''
     c = np.sign(k)*np.fmin(np.abs(k)/np.sqrt(Sig1*Sig2),1)
     sig1 = np.sign(c)*np.sqrt(Sig1*np.abs(c))
     sig2 = np.sqrt(Sig2*np.abs(c))
@@ -181,16 +251,57 @@ def R_int(M1,M2,mu1,mu2,Sig1,Sig2,k,x):
                 M2(mu2+sig2*x,Del2)
 
 def R_simp(M1,M2,mu1,mu2,Sig1,Sig2,k):
+    '''
+    Compute the cross-correlation of two functions using Simpson's rule, whose expectation values are computed from M1 and M2
+    
+    Parameters
+    ----------
+    M1 : function
+        Expectation value function of the first function. It should take as input the mean and variance of the input distribution.
+    M2 : function
+        Expectation value function of the second function. See M1.
+    mu1 : float
+        Mean of the input to the first function.
+    mu2 : float
+        Mean of the input to the second function.
+    Sig1 : float
+        Variance of the input to the first function.
+    Sig2 : float
+        Variance of the input to the second function.
+    k : float
+        Covariance of the input to the two functions.
+        
+    Returns
+    -------
+    float
+        The cross-correlation of the two functions.
+    '''
     xs = np.linspace(-8,8,1001)
     return simpson(R_int(M1,M2,mu1,mu2,Sig1,Sig2,k,xs),x=xs)
 
 def doub_vec(A):
+    '''
+    Double the input vector or double each row of the input matrix (ie [1,2,3] -> [1,2,3,1,2,3])
+    
+    Parameters
+    ----------
+    A : array_like
+        The input vector or matrix to be doubled.
+    '''
     if A.ndim==1:
         return np.concatenate([A,A])
     else:
         return np.kron(np.ones(2)[...,None,:],A)
 
 def doub_mat(A):
+    '''
+    Double the input matrix, creating a block-diagonal matrix (ie [A] -> [[A,0],[0,A]]). If A is 4D, the second and fourth dimensions will be doubled.
+    
+    Parameters
+    ----------
+    A : array_like
+        The input matrix or 4D array to be doubled.
+    '''
     if A.ndim==2:
         return np.block([[A,np.zeros_like(A)],[np.zeros_like(A),A]])
     elif A.ndim==4:
@@ -199,6 +310,14 @@ def doub_mat(A):
         return np.kron(np.eye(2)[...,None,:,:],A)
 
 def each_diag(A,k=0):
+    '''
+    Extract the k-th diagonal of the last two dimensions of A.
+    
+    Parameters
+    ----------
+    A : array_like
+        (...,N,N) array
+    '''
     if k == 0:
         return np.einsum("...jj->...j",A)
     else:
@@ -218,6 +337,23 @@ def each_matmul(A,B):
         return np.einsum("ijk,jk->ik",A,B)
 
 def grid_stat(stat,A,Tstat,dt):
+    '''
+    Compute the variance of a time-averaged quantity from the autocorrelation function.
+    
+    Parameters
+    ----------
+    A : array_like
+        Array whose last dimension contains the autocorrelation function.
+    Tstat : float
+        Time over which to compute the time average.
+    dt : float
+        Time step.
+        
+    Returns
+    -------
+    array_like
+        The variance of the time-averaged quantity, broadcasted over all but the last dimensions of A.
+    '''
     Nsav = A.shape[-1]
     Nstat = round(Tstat/dt)+1
     new_shape = np.array(A.shape)
@@ -237,6 +373,21 @@ def grid_stat(stat,A,Tstat,dt):
     return stat(A_mat,axis=(-1,-2))
 
 def d2_stencil(Tsav,dt):
+    '''
+    Create a finite difference matrix for the second derivative operator with zero-derivative left-boundary conditions and asymptotically constant right-boundary conditions.
+    
+    Parameters
+    ----------
+    Tsav : float
+        Amount of time over which autocorrelations were saved.
+    dt : float
+        Time step.
+        
+    Returns
+    -------
+    array_like
+        2D finite difference matrix for the second derivative operator.
+    '''
     Nsav = round(Tsav/dt)+1
     d2_mat = np.zeros((Nsav,Nsav))
     d2_mat[(np.arange(Nsav), np.arange(Nsav))] = -2/dt**2
@@ -247,6 +398,21 @@ def d2_stencil(Tsav,dt):
     return d2_mat
 
 def get_time_freq_func(f):
+    '''
+    Given a symmetric autocorrelation function evaluated at non-negative times (interval [0,t]), compute the periodic extension (interval (-t,t]) and its Fourier transform.
+    
+    Parameters
+    ----------
+    f : array_like
+        The autocorrelation function evaluated at non-negative times.
+        
+    Returns
+    -------
+    array_like
+        The periodic extension of the autocorrelation function.
+    array_like
+        The Fourier transform of the periodic extension.
+    '''
     N = f.shape[-1]
     new_shape = np.array(f.shape)
     new_shape[-1] += N-2
@@ -257,12 +423,70 @@ def get_time_freq_func(f):
     return ft,fo
 
 def smooth_func(f,dt,fcut=17,beta=1):
+    '''
+    Smooth an autocorrelation function by applying a low-pass filter.
+    
+    Parameters
+    ----------
+    f : array_like
+        The autocorrelation function to be smoothed.
+    dt : float
+        Time step.
+    fcut : float, optional
+        Cutoff frequency for the low-pass filter. Default is 17.
+    beta : float, optional
+        Smoothing parameter for the low-pass filter. Default is 1.
+        
+    Returns
+    -------
+    array_like
+        The smoothed autocorrelation function.
+    '''
     N = f.shape[-1]
     _,fo = get_time_freq_func(f)
     fo *= 1/(1 + np.exp((np.abs(np.fft.fftfreq(2*(N-1),dt)) - fcut)*beta))
     return np.real(np.fft.ifft(fo))[...,:N]
 
 def gauss_dmft(tau,muW,SigW,muH,SigH,M_fn,C_fn,Twrm,Tsav,dt,r0=None,Cr0=None):
+    '''
+    Solve for stationary rate moments by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    muW : array_like
+        2D Array of mean total weights per connection type.
+    SigW : array_like
+        2D Array of variance of total weights per connection type.
+    muH : array_like
+        1D Array of mean external input per cell type.
+    SigH : array_like
+        1D Array of variance of external input per cell type.
+    M_fn : function
+        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input and return a 1D array of the mean rates.
+    C_fn : function
+        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs and return a 1D array of the autocorrelation of the rates.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    r0 : array_like, optional
+        Initial condition for the mean rates. If None, defaults to 1e-8 for all cell types.
+    Cr0 : array_like, optional
+        Initial condition for the autocorrelation function. If None, defaults to 1e2 for all cell types.
+        
+    Returns
+    -------
+    array_like
+        2D Array of the mean rates over time (shape: (Ntyp, Nint)).
+    array_like
+        3D Array of the autocorrelation function over time (shape: (Ntyp, Nint, Nint)).
+    bool
+        Boolean indicating whether the system converged.
+    '''
     Ntyp = len(muH)
     Nint = round((Twrm+Tsav)/dt)+1
     Nclc = round(1.5*Tsav/dt)+1
@@ -350,7 +574,46 @@ def gauss_dmft(tau,muW,SigW,muH,SigH,M_fn,C_fn,Twrm,Tsav,dt,r0=None,Cr0=None):
         (np.max(Cr_diag[:,-Nsav:],axis=1)-np.min(Cr_diag[:,-Nsav:],axis=1))/\
             np.mean(Cr_diag[:,-Nsav:],axis=1) < 1e-3
 
-def doub_gauss_dmft(tau,muW,SigW,muH,SigH,M_fns,C_fns,Twrm,Tsav,dt,rb0=None,Crb0=None):
+def doub_gauss_dmft(tau,muW,SigW,muH,SigH,M_fns,C_fns,Twrm,Tsav,dt,r0=None,Cr0=None):
+    '''
+    Solve for stationary rate moments simultaneously without and with a perturbation by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    muW : array_like
+        2D Array of mean total weights per connection type.
+    SigW : array_like
+        2D Array of variance of total weights per connection type.
+    muH : array_like
+        1D Array of mean external input per cell type.
+    SigH : array_like
+        1D Array of variance of external input per cell type.
+    M_fns : list of functions
+        List of two functions to compute the mean rates. Each function should take as input the 1D arrays of the mean and variance of the net input and return a 1D array of the mean rates. The first function is for the unperturbed system, and the second function is for the perturbed system.
+    C_fns : list of functions
+        List of two functions to compute the autocorrelation of the rates. Each function should take as input the 1D arrays of the mean, variance, and covariance of the net inputs and return a 1D array of the autocorrelation of the rates. The first function is for the unperturbed system, and the second function is for the perturbed system.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    r0 : array_like, optional
+        Initial condition for the mean rates. If None, defaults to 1e-8 for all cell types.
+    Cr0 : array_like, optional
+        Initial condition for the autocorrelation function. If None, defaults to 1e2 for all cell types.
+        
+    Returns
+    -------
+    array_like
+        2D Array of the mean rates over time (shape: (Ntyp, Nint)).
+    array_like
+        3D Array of the autocorrelation function over time (shape: (Ntyp, Nint, Nint)).
+    bool
+        Boolean indicating whether the system converged.
+    '''
     Ntyp = len(muH)
     
     doub_tau = doub_vec(tau)
@@ -367,9 +630,53 @@ def doub_gauss_dmft(tau,muW,SigW,muH,SigH,M_fns,C_fns,Twrm,Tsav,dt,rb0=None,Crb0
         C_fns[0](mui[:Ntyp],Sigii[:Ntyp],Sigij[:Ntyp],out[:Ntyp])
         C_fns[1](mui[Ntyp:],Sigii[Ntyp:],Sigij[Ntyp:],out[Ntyp:])
         
-    return gauss_dmft(doub_tau,doub_muW,doub_SigW,doub_muH,doub_SigH,doub_M,doub_C,Twrm,Tsav,dt,rb0,Crb0)
+    if r0 is not None and len(r0) == Ntyp:
+        r0 = doub_vec(r0)
+    if Cr0 is not None and len(Cr0) == Ntyp:
+        Cr0 = np.concatenate([Cr0,Cr0],axis=0)
+        
+    return gauss_dmft(doub_tau,doub_muW,doub_SigW,doub_muH,doub_SigH,doub_M,doub_C,Twrm,Tsav,dt,r0,Cr0)
 
 def gauss_struct_dmft(tau,muWs,SigWs,muHs,SigHs,M_fn,C_fn,mu_fn,Sig_fn,Twrm,Tsav,dt,rs0,Crs0):
+    '''
+    Solve for stationary rate moments in a structured network by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    muW : array_like
+        2D Array of mean total weights per connection type.
+    SigW : array_like
+        2D Array of variance of total weights per connection type.
+    muH : array_like
+        1D Array of mean external input per cell type.
+    SigH : array_like
+        1D Array of variance of external input per cell type.
+    M_fn : function
+        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input and return a 1D array of the mean rates.
+    C_fn : function
+        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs and return a 1D array of the autocorrelation of the rates.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    r0 : array_like, optional
+        Initial condition for the mean rates. If None, defaults to 1e-8 for all cell types.
+    Cr0 : array_like, optional
+        Initial condition for the autocorrelation function. If None, defaults to 1e2 for all cell types.
+        
+    Returns
+    -------
+    array_like
+        2D Array of the mean rates over time (shape: (Ntyp, Nint)).
+    array_like
+        3D Array of the autocorrelation function over time (shape: (Ntyp, Nint, Nint)).
+    bool
+        Boolean indicating whether the system converged.
+    '''
     Nsit = muHs.shape[0]
     Ntyp = muHs.shape[1]
     Nint = round((Twrm+Tsav)/dt)+1
@@ -724,7 +1031,7 @@ def sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
     Crs0 = np.concatenate([Crb0[None,:,:],Cra0[None,:,:],Crp0[None,:,:]],0)
     
     def mu_fn(rsi,muWs,muHs,musi):
-        """
+        '''
         rbi = rsi[0]
         rai = rsi[1]
         rpi = rsi[2]
@@ -739,7 +1046,7 @@ def sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
         mubi = musi[0]
         muai = musi[1]
         mupi = musi[2]
-        """
+        '''
         sri = solve_width((rsi[1]-rsi[0])/(rsi[2]-rsi[0]))
         sWri = np.sqrt(sW2+sri**2)
         rpmbi = rsi[2] - rsi[0]
@@ -749,7 +1056,7 @@ def sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
         musi[0] = musi[0] + (struct_fact(L/2,sWri,sri,L)*muWs[1])@rpmbi
         
     def Sig_fn(Crsi,SigWs,SigHs,Sigsi):
-        """
+        '''
         Crbi = Crsi[0]
         Crai = Crsi[1]
         Crpi = Crsi[2]
@@ -764,7 +1071,7 @@ def sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
         Sigbi = Sigsi[0]
         Sigai = Sigsi[1]
         Sigpi = Sigsi[2]
-        """
+        '''
         sCri = solve_width((Crsi[1]-Crsi[0])/(Crsi[2]-Crsi[0]))
         sWCri = np.sqrt(sW2+sCri**2)
         Crpmbi = Crsi[2] - Crsi[0]
@@ -822,7 +1129,7 @@ def sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
     Crs0 = np.concatenate([Crb0[None,:,:],Cra0[None,:,:],Crp0[None,:,:]],0)
     
     def mu_fn(rsi,muWs,muHs,musi):
-        """
+        '''
         rbi = rsi[0]
         rai = rsi[1]
         rpi = rsi[2]
@@ -837,7 +1144,7 @@ def sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
         mubi = musi[0]
         muai = musi[1]
         mupi = musi[2]
-        """
+        '''
         sri = solve_width((rsi[1]-rsi[0])/(rsi[2]-rsi[0]))
         rOinv = np.sum(inv_overlap(xpeaks,sri[:,None])[:,:,0],-1)
         sWri = np.sqrt(sW2+sri**2)
@@ -849,7 +1156,7 @@ def sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
         musi[0] = musi[0] + (2*struct_fact(L/2,sWri,sri,L)*muWs[1])@rpmbi
         
     def Sig_fn(Crsi,SigWs,SigHs,Sigsi):
-        """
+        '''
         Crbi = Crsi[0]
         Crai = Crsi[1]
         Crpi = Crsi[2]
@@ -864,7 +1171,7 @@ def sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
         Sigbi = Sigsi[0]
         Sigai = Sigsi[1]
         Sigpi = Sigsi[2]
-        """
+        '''
         sCri = solve_width((Crsi[1]-Crsi[0])/(Crsi[2]-Crsi[0]))
         CrOinv = np.sum(inv_overlap(xpeaks,sCri[:,None])[:,:,0],-1)
         sWCri = np.sqrt(sW2+sCri**2)
@@ -975,7 +1282,7 @@ def diff_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,C
     Cdrs0 = np.concatenate([Cdrb0[None,:,:],Cdra0[None,:,:],Cdrp0[None,:,:]],0)
     
     def mu_fn(rs,muWs,muHs,mus):
-        """
+        '''
         rbi = rs[0]
         rai = rs[1]
         rpi = rs[2]
@@ -990,7 +1297,7 @@ def diff_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,C
         mubi = mus[0]
         muai = mus[1]
         mupi = mus[2]
-        """
+        '''
         sr = solve_width((rs[1]-rs[0])/(rs[2]-rs[0]))
         sWr = np.sqrt(doub_mat(sW2)+sr**2)
         rpmb = rs[2] - rs[0]
@@ -1000,7 +1307,7 @@ def diff_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,C
         mus[0] = mus[0] + (struct_fact(L/2,sWr,sr,L)*muWs[1])@rpmb
         
     def Sig_fn(Crs,SigWs,SigHs,Sigs):
-        """
+        '''
         Crbi = Crs[0]
         Crai = Crs[1]
         Crpi = Crs[2]
@@ -1015,7 +1322,7 @@ def diff_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,C
         Sigbi = Sigs[0]
         Sigai = Sigs[1]
         Sigpi = Sigs[2]
-        """
+        '''
         sCr = solve_width((Crs[1]-Crs[0])/(Crs[2]-Crs[0]))
         sWCr = np.sqrt(doub_mat(sW2)[:,:,None]+sCr[None,:,:]**2)
         Crpmb = Crs[2] - Crs[0]
@@ -1028,7 +1335,7 @@ def diff_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,C
         Sigs[0] = Sigs[0] + each_matmul(struct_fact(L/2,sWCr,sCr,L)*SigWs[1][:,:,None],Crpmb)
         
     def Sigd_fn(Cdrsi,SigWs,Sigdsi):
-        """
+        '''
         Cdrbi = Cdrsi[0]
         Cdrai = Cdrsi[1]
         Cdrpi = Cdrsi[2]
@@ -1039,7 +1346,7 @@ def diff_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,C
         Sigdbi = Sigdsi[0]
         Sigdai = Sigdsi[1]
         Sigdpi = Sigdsi[2]
-        """
+        '''
         sCdri = solve_width((Cdrsi[1]-Cdrsi[0])/(Cdrsi[2]-Cdrsi[0]))
         sWCdri = np.sqrt(sW2+sCdri**2)
         Cdrpmbi = Cdrsi[2] - Cdrsi[0]
@@ -1093,7 +1400,7 @@ def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,r
     Cdrs0 = np.concatenate([Cdrb0[None,:,:],Cdra0[None,:,:],Cdrp0[None,:,:]],0)
     
     def mu_fn(rs,muWs,muHs,mus):
-        """
+        '''
         rb = rs[0]
         ra = rs[1]
         rp = rs[2]
@@ -1108,7 +1415,7 @@ def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,r
         mub = mus[0]
         mua = mus[1]
         mup = mus[2]
-        """
+        '''
         sr = solve_width((rs[1]-rs[0])/(rs[2]-rs[0]))
         rOinv = np.sum(inv_overlap(xpeaks,sr[:,None])[:,:,0],-1)
         sWr = np.sqrt(doub_mat(sW2)+sr**2)
@@ -1120,7 +1427,7 @@ def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,r
         mus[0] = mus[0] + (2*struct_fact(L/2,sWr,sr,L)*muWs[1])@rpmb
         
     def Sig_fn(Crs,SigWs,SigHs,Sigs):
-        """
+        '''
         Crbi = Crs[0]
         Crai = Crs[1]
         Crpi = Crs[2]
@@ -1135,7 +1442,7 @@ def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,r
         Sigbi = Sigs[0]
         Sigai = Sigs[1]
         Sigpi = Sigs[2]
-        """
+        '''
         sCr = solve_width((Crs[1]-Crs[0])/(Crs[2]-Crs[0]))
         CrOinv = np.sum(inv_overlap(xpeaks,sCr.flatten()[:,None])[:,:,0],-1).reshape(-1,Nsav)
         sWCr = np.sqrt(doub_mat(sW2)[:,:,None]+sCr[None,:,:]**2)
@@ -1149,7 +1456,7 @@ def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,r
         Sigs[0] = Sigs[0] + each_matmul(2*struct_fact(L/2,sWCr,sCr,L)*SigWs[1][:,:,None],Crpmb)
         
     def Sigd_fn(Cdrsi,SigWs,Sigdsi):
-        """
+        '''
         Cdrbi = Cdrsi[0]
         Cdrai = Cdrsi[1]
         Cdrpi = Cdrsi[2]
@@ -1160,7 +1467,7 @@ def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,r
         Sigdbi = Sigdsi[0]
         Sigdai = Sigdsi[1]
         Sigdpi = Sigdsi[2]
-        """
+        '''
         sCdri = solve_width((Cdrsi[1]-Cdrsi[0])/(Cdrsi[2]-Cdrsi[0]))
         CdrOinv = np.sum(inv_overlap(xpeaks,sCdri[:,None])[:,:,0],-1)
         sWCdri = np.sqrt(sW2+sCdri**2)
@@ -3618,7 +3925,7 @@ def lin_resp_mats(tau,muW,SigW,dmuH,dSigH,M_fn,C_fn,Tsav,dt,mu,Sig):
         - (np.diag(tau**2)[:,None,:,None] - dt*np.diag(tau)[:,None,:,None]) * d2_mat[None,:,None,:] +\
         - Cdphi[:,:,None,None] * SigW[:,None,:,None] * np.eye(Nsav)[None,:,None,:] +\
         - Rd2phi[:,:,None,None] * SigW[:,None,:,None] * del_vec[None,None,None,:]
-    res_dict["D0dis"] = np.eye(Ntyp)[:,None,:,None]*np.eye(Nsav)[None,:,None,:] +\
+    res_dict["D_mint"] = np.eye(Ntyp)[:,None,:,None]*np.eye(Nsav)[None,:,None,:] +\
         - (np.diag(tau**2)[:,None,:,None] - dt*np.diag(tau)[:,None,:,None]) * d2_mat[None,:,None,:]
     
     if dSigH.ndim==1:
