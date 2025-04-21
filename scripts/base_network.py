@@ -220,7 +220,7 @@ class BaseNetwork(ABC):
         WKern : list of list of array-like
             Nested list of kernel applied to distances between sites for each connection type.
         K : float or array-like
-            Mean of in-degree per connection type. If a single float is provided, K is set as the mean in-degree of the first cell type and the in-degree of cell type i>0 is scaled by NC[i]/NC[0]. If an nxn 2D array is provided, the elements are used as the in-degree for each connection type.
+            Mean of out-degree per connection type. If a single float is provided, K is set as the mean out-degree of the first cell type and the out-degree of cell type i>0 is scaled by NC[i]/NC[0]. If an nxn 2D array is provided, the elements are used as the out-degree for each connection type.
             
         Returns
         -------
@@ -264,7 +264,7 @@ class BaseNetwork(ABC):
         WKern : list of list of array-like
             Nested list of kernel applied to distances between sites for each connection type.
         K : float or array-like
-            Mean of in-degree per connection type. If a single float is provided, K is set as the mean in-degree of the first cell type and the in-degree of cell type i>0 is scaled by NC[i]/NC[0]. If an nxn 2D array is provided, the elements are used as the in-degree for each connection type.
+            Mean of out-degree per connection type. If a single float is provided, K is set as the mean out-degree of the first cell type and the out-degree of cell type i>0 is scaled by NC[i]/NC[0]. If an nxn 2D array is provided, the elements are used as the out-degree for each connection type.
         rho : float or array-like
             Correlation of the binary connections. If a single float is provided, rho is set as the correlation for all connection types. If an nxn 2D array is provided, the elements are used as the correlation for each connection type.
             

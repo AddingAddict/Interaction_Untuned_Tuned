@@ -11,20 +11,20 @@ import dmft
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--c_idx', '-c',  help='which contrast', type=int, default=0)
+parser.add_argument("--c_idx", "-c",  help="which contrast", type=int, default=0)
 args = vars(parser.parse_args())
 print(parser.parse_args())
-c_idx= args['c_idx']
+c_idx= args["c_idx"]
 
 with open("./../model_data/best_fit.pkl", "rb") as handle:
     res_dict = pickle.load(handle)
-prms = res_dict['prms']
-CVh = res_dict['best_monk_eX']
-bX = res_dict['best_monk_bX']
-aXs = res_dict['best_monk_aXs']
-K = prms['K']
-SoriE = prms['SoriE']
-SoriI = prms['SoriI']
+prms = res_dict["prms"]
+CVh = res_dict["best_monk_eX"]
+bX = res_dict["best_monk_bX"]
+aXs = res_dict["best_monk_aXs"]
+K = prms["K"]
+SoriE = prms["SoriE"]
+SoriI = prms["SoriI"]
 
 ri = ric.Ricciardi()
 
@@ -35,8 +35,8 @@ dt = 0.01/5
 
 Nori = 20
 
-print('simulating contrast # '+str(c_idx+1))
-print('')
+print("simulating contrast # "+str(c_idx+1))
+print("")
 aXs = np.concatenate([aXs,aXs[-1]*np.arange(1.0+0.2,2.0+0.2,0.2)])
 aX = aXs[c_idx]
 
@@ -59,16 +59,16 @@ convs = np.zeros((2,3)).astype(bool)
 
 def predict_networks(prms,rX,cA,CVh):
     tau = np.array([ri.tE,ri.tI],dtype=np.float32)
-    W = prms['J']*np.array([[1,-prms['gE']],[1./prms['beta'],-prms['gI']/prms['beta']]],dtype=np.float32)
-    Ks = (1-prms.get('basefrac',0))*np.array([prms['K'],prms['K']/4],dtype=np.float32)
-    Kbs =   prms.get('basefrac',0) *np.array([prms['K'],prms['K']/4],dtype=np.float32)
-    Hb = rX*(1+prms.get('basefrac',0)*cA)*prms['K']*prms['J']*\
-        np.array([prms['hE'],prms['hI']/prms['beta']],dtype=np.float32)
-    Hp = rX*(1+                       cA)*prms['K']*prms['J']*\
-        np.array([prms['hE'],prms['hI']/prms['beta']],dtype=np.float32)
+    W = prms["J"]*np.array([[1,-prms["gE"]],[1./prms["beta"],-prms["gI"]/prms["beta"]]],dtype=np.float32)
+    Ks = (1-prms.get("basefrac",0))*np.array([prms["K"],prms["K"]/4],dtype=np.float32)
+    Kbs =   prms.get("basefrac",0) *np.array([prms["K"],prms["K"]/4],dtype=np.float32)
+    Hb = rX*(1+prms.get("basefrac",0)*cA)*prms["K"]*prms["J"]*\
+        np.array([prms["hE"],prms["hI"]/prms["beta"]],dtype=np.float32)
+    Hp = rX*(1+                       cA)*prms["K"]*prms["J"]*\
+        np.array([prms["hE"],prms["hI"]/prms["beta"]],dtype=np.float32)
     eH = CVh
-    sW = np.array([[prms['SoriE'],prms['SoriI']],[prms['SoriE'],prms['SoriI']]],dtype=np.float32)
-    sH = np.array([prms['SoriF'],prms['SoriF']],dtype=np.float32)
+    sW = np.array([[prms["SoriE"],prms["SoriI"]],[prms["SoriE"],prms["SoriI"]]],dtype=np.float32)
+    sH = np.array([prms["SoriF"],prms["SoriF"]],dtype=np.float32)
     
     muW = tau[:,None]*W*Ks
     SigW = tau[:,None]**2*W**2*Ks
@@ -100,62 +100,62 @@ def predict_networks(prms,rX,cA,CVh):
     def gauss(x,b,p,s):
         return b + (p-b)*dmft.basesubwrapnorm(x,s)
     
-    if cA == 0 or prms.get('basefrac',0)==1:
-        res_dict = dmft.run_two_stage_dmft(prms,rX*(1+cA),CVh,'./../results',ri,Twrm,Tsav,dt)
-        rvb = res_dict['r'][:2]
-        rvp = res_dict['r'][:2]
+    if cA == 0 or prms.get("basefrac",0)==1:
+        res_dict = dmft.run_two_stage_dmft(prms,rX*(1+cA),CVh,"./../results",ri,Twrm,Tsav,dt)
+        rvb = res_dict["r"][:2]
+        rvp = res_dict["r"][:2]
         srv = 1e2*np.ones(2)
-        rob = res_dict['r'][2:]
-        rop = res_dict['r'][2:]
+        rob = res_dict["r"][2:]
+        rop = res_dict["r"][2:]
         sro = 1e2*np.ones(2)
-        Crvb = dmft.grid_stat(np.mean,res_dict['Cr'][:2],Tsim,dt)
-        Crvp = dmft.grid_stat(np.mean,res_dict['Cr'][:2],Tsim,dt)
+        Crvb = dmft.grid_stat(np.mean,res_dict["Cr"][:2],Tsim,dt)
+        Crvp = dmft.grid_stat(np.mean,res_dict["Cr"][:2],Tsim,dt)
         sCrv = 1e2*np.ones(2)
-        Crob = dmft.grid_stat(np.mean,res_dict['Cr'][2:],Tsim,dt)
-        Crop = dmft.grid_stat(np.mean,res_dict['Cr'][2:],Tsim,dt)
+        Crob = dmft.grid_stat(np.mean,res_dict["Cr"][2:],Tsim,dt)
+        Crop = dmft.grid_stat(np.mean,res_dict["Cr"][2:],Tsim,dt)
         sCro = 1e2*np.ones(2)
-        Cdrb = dmft.grid_stat(np.mean,res_dict['Cdr'],Tsim,dt)
-        Cdrp = dmft.grid_stat(np.mean,res_dict['Cdr'],Tsim,dt)
+        Cdrb = dmft.grid_stat(np.mean,res_dict["Cdr"],Tsim,dt)
+        Cdrm = dmft.grid_stat(np.mean,res_dict["Cdr"],Tsim,dt)
         sCdr = 1e2*np.ones(2)
-        normC[:,0,:] = (res_dict['Cr'][:2,-1]/res_dict['Cr'][:2,0])[:,None]
-        normC[:,1,:] = (res_dict['Cr'][2:,-1]/res_dict['Cr'][2:,0])[:,None]
-        normC[:,2,:] = (res_dict['Cdr'][:,-1]/res_dict['Cdr'][:,0])[:,None]
-        conv[:,0] = res_dict['conv'][:2]
-        conv[:,1] = res_dict['conv'][2:]
-        conv[:,2] = res_dict['convd']
+        normC[:,0,:] = (res_dict["Cr"][:2,-1]/res_dict["Cr"][:2,0])[:,None]
+        normC[:,1,:] = (res_dict["Cr"][2:,-1]/res_dict["Cr"][2:,0])[:,None]
+        normC[:,2,:] = (res_dict["Cdr"][:,-1]/res_dict["Cdr"][:,0])[:,None]
+        conv[:,0] = res_dict["conv"][:2]
+        conv[:,1] = res_dict["conv"][2:]
+        conv[:,2] = res_dict["convd"]
         dmft_res = res_dict.copy()
     else:
-        res_dict = dmft.run_two_stage_ring_dmft(prms,rX,cA,CVh,'./../results',ri,Twrm,Tsav,dt)
-        rvb = res_dict['rb'][:2]
-        rvp = res_dict['rp'][:2]
-        srv = res_dict['sr'][:2]
-        rob = res_dict['rb'][2:]
-        rop = res_dict['rp'][2:]
-        sro = res_dict['sr'][2:]
-        Crvb = dmft.grid_stat(np.mean,res_dict['Crb'][:2],Tsim,dt)
-        Crvp = dmft.grid_stat(np.mean,res_dict['Crp'][:2],Tsim,dt)
-        sCrv = dmft.grid_stat(np.mean,res_dict['sCr'][:2],Tsim,dt)
-        Crob = dmft.grid_stat(np.mean,res_dict['Crb'][2:],Tsim,dt)
-        Crop = dmft.grid_stat(np.mean,res_dict['Crp'][2:],Tsim,dt)
-        sCro = dmft.grid_stat(np.mean,res_dict['sCr'][2:],Tsim,dt)
-        Cdrb = dmft.grid_stat(np.mean,res_dict['Cdrb'],Tsim,dt)
-        Cdrp = dmft.grid_stat(np.mean,res_dict['Cdrp'],Tsim,dt)
-        sCdr = dmft.grid_stat(np.mean,res_dict['sCdr'],Tsim,dt)
-        normC[:,0] = gauss(oris[None,:],res_dict['Crb'][:2,-1,None],res_dict['Crp'][:2,-1,None],
-                           res_dict['sCr'][:2,-1,None]) /\
-                     gauss(oris[None,:],res_dict['Crb'][:2, 0,None],res_dict['Crp'][:2, 0,None],
-                           res_dict['sCr'][:2, 0,None])
-        normC[:,1] = gauss(oris[None,:],res_dict['Crb'][2:,-1,None],res_dict['Crp'][2:,-1,None],
-                           res_dict['sCr'][2:,-1,None]) /\
-                     gauss(oris[None,:],res_dict['Crb'][2:, 0,None],res_dict['Crp'][2:, 0,None],
-                           res_dict['sCr'][2:, 0,None])
-        normC[:,2] = gauss(oris[None,:],res_dict['Cdrb'][:,-1,None],res_dict['Cdrp'][:,-1,None],
-                           res_dict['sCdr'][:,-1,None]) /\
-                     gauss(oris[None,:],res_dict['Cdrb'][:, 0,None],res_dict['Cdrp'][:, 0,None],
-                           res_dict['sCdr'][:, 0,None])
-        conv[:,0] = res_dict['convp'][:2]
-        conv[:,1] = res_dict['convp'][2:]
-        conv[:,2] = res_dict['convdp']
+        res_dict = dmft.run_two_stage_ring_dmft(prms,rX,cA,CVh,"./../results",ri,Twrm,Tsav,dt)
+        rvb = res_dict["rb"][:2]
+        rvp = res_dict["rm"][:2]
+        srv = res_dict["sr"][:2]
+        rob = res_dict["rb"][2:]
+        rop = res_dict["rm"][2:]
+        sro = res_dict["sr"][2:]
+        Crvb = dmft.grid_stat(np.mean,res_dict["Crb"][:2],Tsim,dt)
+        Crvp = dmft.grid_stat(np.mean,res_dict["Crm"][:2],Tsim,dt)
+        sCrv = dmft.grid_stat(np.mean,res_dict["sCr"][:2],Tsim,dt)
+        Crob = dmft.grid_stat(np.mean,res_dict["Crb"][2:],Tsim,dt)
+        Crop = dmft.grid_stat(np.mean,res_dict["Crm"][2:],Tsim,dt)
+        sCro = dmft.grid_stat(np.mean,res_dict["sCr"][2:],Tsim,dt)
+        Cdrb = dmft.grid_stat(np.mean,res_dict["Cdrb"],Tsim,dt)
+        Cdrm = dmft.grid_stat(np.mean,res_dict["Cdrm"],Tsim,dt)
+        sCdr = dmft.grid_stat(np.mean,res_dict["sCdr"],Tsim,dt)
+        normC[:,0] = gauss(oris[None,:],res_dict["Crb"][:2,-1,None],res_dict["Crm"][:2,-1,None],
+                           res_dict["sCr"][:2,-1,None]) /\
+                     gauss(oris[None,:],res_dict["Crb"][:2, 0,None],res_dict["Crm"][:2, 0,None],
+                           res_dict["sCr"][:2, 0,None])
+        normC[:,1] = gauss(oris[None,:],res_dict["Crb"][2:,-1,None],res_dict["Crm"][2:,-1,None],
+                           res_dict["sCr"][2:,-1,None]) /\
+                     gauss(oris[None,:],res_dict["Crb"][2:, 0,None],res_dict["Crm"][2:, 0,None],
+                           res_dict["sCr"][2:, 0,None])
+        normC[:,2] = gauss(oris[None,:],res_dict["Cdrb"][:,-1,None],res_dict["Cdrm"][:,-1,None],
+                           res_dict["sCdr"][:,-1,None]) /\
+                     gauss(oris[None,:],res_dict["Cdrb"][:, 0,None],res_dict["Cdrm"][:, 0,None],
+                           res_dict["sCdr"][:, 0,None])
+        conv[:,0] = res_dict["convp"][:2]
+        conv[:,1] = res_dict["convp"][2:]
+        conv[:,2] = res_dict["convdp"]
         dmft_res = res_dict.copy()
         
     sWrv = np.sqrt(sW2+srv**2)
@@ -182,8 +182,8 @@ def predict_networks(prms,rX,cA,CVh):
     Sigob = Sigob + dmft.struct_fact(90,sWCro,sCro)*SigW*(Crop-Crob)
     sSigo = sWCro
     Sigdb = (SigW+dmft.unstruct_fact(sCdr)*SigWb)*Cdrb
-    Sigdp = Sigdb + dmft.struct_fact(0,sWCdr,sCdr)*SigW*(Cdrp-Cdrb)
-    Sigdb = Sigdb + dmft.struct_fact(90,sWCdr,sCdr)*SigW*(Cdrp-Cdrb)
+    Sigdp = Sigdb + dmft.struct_fact(0,sWCdr,sCdr)*SigW*(Cdrm-Cdrb)
+    Sigdb = Sigdb + dmft.struct_fact(90,sWCdr,sCdr)*SigW*(Cdrm-Cdrb)
     sSigd = sWCdr
     
     for i in range(2):
@@ -192,7 +192,7 @@ def predict_networks(prms,rX,cA,CVh):
         μrs[i,2] = μrs[i,1] - μrs[i,0]
         Σrs[i,0] = np.fmax(gauss(oris,Crvb[i],Crvp[i],sCrv[i]) - μrs[i,0]**2,0)
         Σrs[i,1] = np.fmax(gauss(oris,Crob[i],Crop[i],sCro[i]) - μrs[i,1]**2,0)
-        Σrs[i,2] = np.fmax(gauss(oris,Cdrb[i],Cdrp[i],sCdr[i]) - μrs[i,2]**2,0)
+        Σrs[i,2] = np.fmax(gauss(oris,Cdrb[i],Cdrm[i],sCdr[i]) - μrs[i,2]**2,0)
         Σrs[i,3] = 0.5*(Σrs[i,1] - Σrs[i,0] - Σrs[i,2])
         μmuEs[i,0] = gauss(oris,muvb[i,0],muvp[i,0],smuv[i,0]) + gauss(oris,muHb[i],muHp[i],smuH[i])
         μmuEs[i,1] = gauss(oris,muob[i,0],muop[i,0],smuo[i,0]) + gauss(oris,muHb[i],muHp[i],smuH[i])
@@ -229,8 +229,8 @@ def calc_opto_bal(μmuE,μmuI,ΣmuE,ΣmuI,L,CVL,N=20000,seed=0):
     return np.mean(np.abs(muEs+muIs)/muEs)
 
 # Simulate zero and full contrast networks with ring connectivity
-print('simulating baseline fraction network')
-print('')
+print("simulating baseline fraction network")
+print("")
 
 μrs,Σrs,μmus,Σmus,μmuEs,ΣmuEs,μmuIs,ΣmuIs,normC,conv,dmft_res = predict_networks(prms,rX,cA,CVh)
 
@@ -247,7 +247,7 @@ start = time.process_time()
 for nloc in range(Nori):
     balEs[0,nloc] = calc_bal(μmuEs[0,0,nloc],μmuIs[0,0,nloc],ΣmuEs[0,0,nloc],ΣmuIs[0,0,nloc])
     balIs[0,nloc] = calc_bal(μmuEs[1,0,nloc],μmuIs[1,0,nloc],ΣmuEs[1,0,nloc],ΣmuIs[1,0,nloc])
-    balEs[1,nloc] = calc_opto_bal(μmuEs[0,1,nloc],μmuIs[0,1,nloc],ΣmuEs[0,1,nloc],ΣmuIs[0,1,nloc],prms['L'],prms['CVL'])
+    balEs[1,nloc] = calc_opto_bal(μmuEs[0,1,nloc],μmuIs[0,1,nloc],ΣmuEs[0,1,nloc],ΣmuIs[0,1,nloc],prms["L"],prms["CVL"])
     balIs[1,nloc] = calc_bal(μmuEs[1,1,nloc],μmuIs[1,1,nloc],ΣmuEs[1,1,nloc],ΣmuIs[1,1,nloc])
 normCEs[:] = normC[0]
 normCIs[:] = normC[1]
@@ -296,48 +296,48 @@ osm_norm_covs = (0.8*np.mean(ΣrEs[3,osm_mask]+μrEs[0,osm_mask]*μrEs[2,osm_mas
     osm_base_means*osm_diff_means) / osm_diff_stds**2
 
 print("Saving statistics took ",time.process_time() - start," s")
-print('')
+print("")
 
 res_dict = {}
 
-res_dict['prms'] = prms
-res_dict['μrEs'] = μrEs
-res_dict['μrIs'] = μrIs
-res_dict['ΣrEs'] = ΣrEs
-res_dict['ΣrIs'] = ΣrIs
-res_dict['μhEs'] = μhEs
-res_dict['μhIs'] = μhIs
-res_dict['ΣhEs'] = ΣhEs
-res_dict['ΣhIs'] = ΣhIs
-res_dict['balEs'] = balEs
-res_dict['balIs'] = balIs
-res_dict['normCEs'] = normCEs
-res_dict['normCIs'] = normCIs
-res_dict['convs'] = convs
-res_dict['all_base_means'] = all_base_means
-res_dict['all_base_stds'] = all_base_stds
-res_dict['all_opto_means'] = all_opto_means
-res_dict['all_opto_stds'] = all_opto_stds
-res_dict['all_diff_means'] = all_diff_means
-res_dict['all_diff_stds'] = all_diff_stds
-res_dict['all_norm_covs'] = all_norm_covs
-res_dict['vsm_base_means'] = vsm_base_means
-res_dict['vsm_base_stds'] = vsm_base_stds
-res_dict['vsm_opto_means'] = vsm_opto_means
-res_dict['vsm_opto_stds'] = vsm_opto_stds
-res_dict['vsm_diff_means'] = vsm_diff_means
-res_dict['vsm_diff_stds'] = vsm_diff_stds
-res_dict['vsm_norm_covs'] = vsm_norm_covs
-res_dict['osm_base_means'] = osm_base_means
-res_dict['osm_base_stds'] = osm_base_stds
-res_dict['osm_opto_means'] = osm_opto_means
-res_dict['osm_opto_stds'] = osm_opto_stds
-res_dict['osm_diff_means'] = osm_diff_means
-res_dict['osm_diff_stds'] = osm_diff_stds
-res_dict['osm_norm_covs'] = osm_norm_covs
-res_dict['dmft_res'] = dmft_res
+res_dict["prms"] = prms
+res_dict["μrEs"] = μrEs
+res_dict["μrIs"] = μrIs
+res_dict["ΣrEs"] = ΣrEs
+res_dict["ΣrIs"] = ΣrIs
+res_dict["μhEs"] = μhEs
+res_dict["μhIs"] = μhIs
+res_dict["ΣhEs"] = ΣhEs
+res_dict["ΣhIs"] = ΣhIs
+res_dict["balEs"] = balEs
+res_dict["balIs"] = balIs
+res_dict["normCEs"] = normCEs
+res_dict["normCIs"] = normCIs
+res_dict["convs"] = convs
+res_dict["all_base_means"] = all_base_means
+res_dict["all_base_stds"] = all_base_stds
+res_dict["all_opto_means"] = all_opto_means
+res_dict["all_opto_stds"] = all_opto_stds
+res_dict["all_diff_means"] = all_diff_means
+res_dict["all_diff_stds"] = all_diff_stds
+res_dict["all_norm_covs"] = all_norm_covs
+res_dict["vsm_base_means"] = vsm_base_means
+res_dict["vsm_base_stds"] = vsm_base_stds
+res_dict["vsm_opto_means"] = vsm_opto_means
+res_dict["vsm_opto_stds"] = vsm_opto_stds
+res_dict["vsm_diff_means"] = vsm_diff_means
+res_dict["vsm_diff_stds"] = vsm_diff_stds
+res_dict["vsm_norm_covs"] = vsm_norm_covs
+res_dict["osm_base_means"] = osm_base_means
+res_dict["osm_base_stds"] = osm_base_stds
+res_dict["osm_opto_means"] = osm_opto_means
+res_dict["osm_opto_stds"] = osm_opto_stds
+res_dict["osm_diff_means"] = osm_diff_means
+res_dict["osm_diff_stds"] = osm_diff_stds
+res_dict["osm_norm_covs"] = osm_norm_covs
+res_dict["dmft_res"] = dmft_res
 
-res_file = './../results/dmft_best_fit_c_{:d}'.format(c_idx)
+res_file = "./../results/dmft_best_fit_c_{:d}".format(c_idx)
 
-with open(res_file+'.pkl', 'wb') as handle:
+with open(res_file+".pkl", "wb") as handle:
     pickle.dump(res_dict,handle)

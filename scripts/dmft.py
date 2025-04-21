@@ -2,7 +2,7 @@ import os
 import pickle
 import numpy as np
 from scipy.linalg import toeplitz
-from scipy.interpolate import interp1d,RegularGridInterpolator
+from scipy.intermolate import interm1d,RegularGridIntermolator
 from scipy.integrate import quad,simpson
 from mpmath import fp
 import time
@@ -60,7 +60,7 @@ def xtomu(x):
     
 def base_itp_moments(res_dir):
     '''
-    Loads precomputed rate moments and returns interpolation functions.
+    Loads precomputed rate moments and returns intermolation functions.
     
     Parameters
     ----------
@@ -91,14 +91,14 @@ def base_itp_moments(res_dir):
     CEs = np.load(os.path.join(res_dir,"CE_itp.npy")).astype(np.float32)
     CIs = np.load(os.path.join(res_dir,"CI_itp.npy")).astype(np.float32)
     
-    FE_itp = RegularGridInterpolator((Fxs,),FEs,bounds_error=False,fill_value=None)
-    FI_itp = RegularGridInterpolator((Fxs,),FIs,bounds_error=False,fill_value=None)
+    FE_itp = RegularGridIntermolator((Fxs,),FEs,bounds_error=False,fill_value=None)
+    FI_itp = RegularGridIntermolator((Fxs,),FIs,bounds_error=False,fill_value=None)
     
-    ME_itp = RegularGridInterpolator((Mss,Mxs),MEs,bounds_error=False,fill_value=None)
-    MI_itp = RegularGridInterpolator((Mss,Mxs),MIs,bounds_error=False,fill_value=None)
+    ME_itp = RegularGridIntermolator((Mss,Mxs),MEs,bounds_error=False,fill_value=None)
+    MI_itp = RegularGridIntermolator((Mss,Mxs),MIs,bounds_error=False,fill_value=None)
     
-    CE_itp = RegularGridInterpolator((Ccs,Css,Cxs),CEs,bounds_error=False,fill_value=None)
-    CI_itp = RegularGridInterpolator((Ccs,Css,Cxs),CIs,bounds_error=False,fill_value=None)
+    CE_itp = RegularGridIntermolator((Ccs,Css,Cxs),CEs,bounds_error=False,fill_value=None)
+    CI_itp = RegularGridIntermolator((Ccs,Css,Cxs),CIs,bounds_error=False,fill_value=None)
     
     def FE(mu):
         try:
@@ -127,7 +127,7 @@ def base_itp_moments(res_dir):
     
 def opto_itp_moments(res_dir,L,CVL):
     '''
-    Loads precomputed rate moments in the presence of optogenetic stimulation and returns interpolation functions.
+    Loads precomputed rate moments in the presence of optogenetic stimulation and returns intermolation functions.
     
     Parameters
     ----------
@@ -159,11 +159,11 @@ def opto_itp_moments(res_dir,L,CVL):
     Ccs = np.linspace(Ccrange[0],Ccrange[1],round(Ccrange[2])).astype(np.float32)
     CLs = np.load(os.path.join(res_dir,"CL_itp_L={:.2f}_CVL={:.2f}.npy".format(L,CVL))).astype(np.float32)
     
-    FL_itp = RegularGridInterpolator((Fxs,),FLs,bounds_error=False,fill_value=None)
+    FL_itp = RegularGridIntermolator((Fxs,),FLs,bounds_error=False,fill_value=None)
     
-    ML_itp = RegularGridInterpolator((Mss,Mxs),MLs,bounds_error=False,fill_value=None)
+    ML_itp = RegularGridIntermolator((Mss,Mxs),MLs,bounds_error=False,fill_value=None)
     
-    CL_itp = RegularGridInterpolator((Ccs,Css,Cxs),CLs,bounds_error=False,fill_value=None)
+    CL_itp = RegularGridIntermolator((Ccs,Css,Cxs),CLs,bounds_error=False,fill_value=None)
     
     def FL(mu):
         try:
@@ -464,9 +464,9 @@ def gauss_dmft(tau,muW,SigW,muH,SigH,M_fn,C_fn,Twrm,Tsav,dt,r0=None,Cr0=None):
     SigH : array_like
         1D Array of variance of external input per cell type.
     M_fn : function
-        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input and return a 1D array of the mean rates.
+        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input, and a 1D array to where the computed mean rates will be stored.
     C_fn : function
-        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs and return a 1D array of the autocorrelation of the rates.
+        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs, and a 1D array to where the computed autocorrelation of the rates will be stored.
     Twrm : float
         Time over which to warm up the system.
     Tsav : float
@@ -476,16 +476,16 @@ def gauss_dmft(tau,muW,SigW,muH,SigH,M_fn,C_fn,Twrm,Tsav,dt,r0=None,Cr0=None):
     r0 : array_like, optional
         Initial condition for the mean rates. If None, defaults to 1e-8 for all cell types.
     Cr0 : array_like, optional
-        Initial condition for the autocorrelation function. If None, defaults to 1e2 for all cell types.
+        Initial condition for the autocorrelation function. If None, defaults to 1e2 for all cell types for all time lags.
         
     Returns
     -------
     array_like
-        2D Array of the mean rates over time (shape: (Ntyp, Nint)).
+        2D Array of the mean rates over time (shape: (Ntyp,Nint)).
     array_like
-        3D Array of the autocorrelation function over time (shape: (Ntyp, Nint, Nint)).
-    bool
-        Boolean indicating whether the system converged.
+        3D Array of the autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        1D Boolean array indicating whether the corresponding population converged.
     '''
     Ntyp = len(muH)
     Nint = round((Twrm+Tsav)/dt)+1
@@ -591,9 +591,9 @@ def doub_gauss_dmft(tau,muW,SigW,muH,SigH,M_fns,C_fns,Twrm,Tsav,dt,r0=None,Cr0=N
     SigH : array_like
         1D Array of variance of external input per cell type.
     M_fns : list of functions
-        List of two functions to compute the mean rates. Each function should take as input the 1D arrays of the mean and variance of the net input and return a 1D array of the mean rates. The first function is for the unperturbed system, and the second function is for the perturbed system.
+        List of two functions to compute the mean rates. Each function should take as input the 1D arrays of the mean and variance of the net input, and a 1D array to where the computed mean rates will be stored. The first function is for the unperturbed system, and the second function is for the perturbed system.
     C_fns : list of functions
-        List of two functions to compute the autocorrelation of the rates. Each function should take as input the 1D arrays of the mean, variance, and covariance of the net inputs and return a 1D array of the autocorrelation of the rates. The first function is for the unperturbed system, and the second function is for the perturbed system.
+        List of two functions to compute the autocorrelation of the rates. Each function should take as input the 1D arrays of the mean, variance, and covariance of the net inputs, and a 1D array to where the computed autocorrelation of the rates will be stored. The first function is for the unperturbed system, and the second function is for the perturbed system.
     Twrm : float
         Time over which to warm up the system.
     Tsav : float
@@ -603,16 +603,16 @@ def doub_gauss_dmft(tau,muW,SigW,muH,SigH,M_fns,C_fns,Twrm,Tsav,dt,r0=None,Cr0=N
     r0 : array_like, optional
         Initial condition for the mean rates. If None, defaults to 1e-8 for all cell types.
     Cr0 : array_like, optional
-        Initial condition for the autocorrelation function. If None, defaults to 1e2 for all cell types.
+        Initial condition for the autocorrelation function. If None, defaults to 1e2 for all cell types for all time lags.
         
     Returns
     -------
     array_like
-        2D Array of the mean rates over time (shape: (Ntyp, Nint)).
+        2D Array of the mean rates over time (shape: (2*Ntyp,Nint)).
     array_like
-        3D Array of the autocorrelation function over time (shape: (Ntyp, Nint, Nint)).
-    bool
-        Boolean indicating whether the system converged.
+        3D Array of the autocorrelation function over time (shape: (2*Ntyp,Nint,Nint)).
+    array_like
+        1D Boolean array indicating whether the corresponding population converged.
     '''
     Ntyp = len(muH)
     
@@ -645,37 +645,41 @@ def gauss_struct_dmft(tau,muWs,SigWs,muHs,SigHs,M_fn,C_fn,mu_fn,Sig_fn,Twrm,Tsav
     ----------
     tau : array_like
         1D Array of time constants per cell type.
-    muW : array_like
-        2D Array of mean total weights per connection type.
-    SigW : array_like
-        2D Array of variance of total weights per connection type.
-    muH : array_like
-        1D Array of mean external input per cell type.
-    SigH : array_like
-        1D Array of variance of external input per cell type.
+    muWs : array_like
+        Array of mean total weights. Shape depends on implementation of mu_fn and Sig_fn.
+    SigWs : array_like
+        Array of variance of total weights. Shape depends on implementation of mu_fn and Sig_fn.
+    muHs : array_like
+        Array of mean external input. Shape depends on implementation of mu_fn and Sig_fn.
+    SigHs : array_like
+        Array of variance of external input. Shape depends on implementation of mu_fn and Sig_fn.
     M_fn : function
-        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input and return a 1D array of the mean rates.
+        Function to compute the mean rates. It should take as input the 2D arrays of the mean and variance of the net input, and a 2D array to where the computed mean rates will be stored (inputs should have shape (Nsit,Ntyp)).
     C_fn : function
-        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs and return a 1D array of the autocorrelation of the rates.
+        Function to compute the autocorrelation of the rates. It should take as input the 2D arrays of the mean, variance, and covariance of the net inputs, and a 2D array to where the computed autocorrelation of the rates will be stored (inputs should have shape (Nsit,Ntyp)).
+    mu_fn : function
+        Function to compute the mean inputs. It's inputs should be (rs,muWs,muHs,mus), where rs is the 2D array of the mean rates at a given time (shape (Nsit,Ntyp)) and mus is the 2D array where the computed mean inputs at that time will be stored (shape (Nsit,Ntyp)).
+    Sig_fn : function
+        Function to compute the autocovariance of the inputs. It's inputs should be (Crs,SigWs,SigHs,Sigs), where Crs is the 2D array of the rate autocorrelations at a given time pair (shape (Nsit,Ntyp)) and Sigs is the 2D array where the computed autocovariance of the inputs at that time pair will be stored (shape (Nsit,Ntyp)).
     Twrm : float
         Time over which to warm up the system.
     Tsav : float
         Time over which to save the autocorrelation function.
     dt : float
         Time step.
-    r0 : array_like, optional
-        Initial condition for the mean rates. If None, defaults to 1e-8 for all cell types.
-    Cr0 : array_like, optional
-        Initial condition for the autocorrelation function. If None, defaults to 1e2 for all cell types.
+    rs0 : array_like
+        Initial condition for the mean rates. Not optional for this function, as no clear default is available.
+    Crs0 : array_like
+        Initial condition for the autocorrelation function. Not optional for this function, as no clear default is available.
         
     Returns
     -------
     array_like
-        2D Array of the mean rates over time (shape: (Ntyp, Nint)).
+        3D Array of the mean rates over time (shape: (Nsit,Ntyp,Nint)).
     array_like
-        3D Array of the autocorrelation function over time (shape: (Ntyp, Nint, Nint)).
-    bool
-        Boolean indicating whether the system converged.
+        4D Array of the autocorrelation function over time (shape: (Nsit,Ntyp,Nint,Nint)).
+    array_like
+        3D Boolean array indicating whether the corresponding population converged.
     '''
     Nsit = muHs.shape[0]
     Ntyp = muHs.shape[1]
@@ -766,6 +770,45 @@ def gauss_struct_dmft(tau,muWs,SigWs,muHs,SigHs,M_fn,C_fn,mu_fn,Sig_fn,Twrm,Tsav
             np.mean(Crs_diag[:,:,-Nsav:],axis=-1) < 1e-3
 
 def diff_gauss_dmft(tau,muW,SigW,muH,SigH,R_fn,Twrm,Tsav,dt,r,Cr,Cdr0=None,SigdW=None):
+    '''
+    Solve for stationary rate change autocorrelation given the rate moments without and with a perturbation by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    muW : array_like
+        2D Array of mean total weights per connection type.
+    SigW : array_like
+        2D Array of variance of total weights per connection type.
+    muH : array_like
+        1D Array of mean external input per cell type.
+    SigH : array_like
+        1D Array of variance of external input per cell type.
+    R_fn : function
+        Function to compute the cross-correlation of the rates without and with the perturbation. It should take as input the 1D arrays of the unperturbed and perturbed means, variances, and the unperturbed-perturbed covariance of the net inputs, and a 1D array to where the computed cross-correlation of the rates will be stored.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    r : array_like
+        1D Doubled array of the stationary mean rates without and with the perturbation (shape: (2*Ntyp,)).
+    Cr : array_like
+        2D Doubled array of the stationary rate autocorrelations without and with the perturbation (shape: (2*Ntyp,Nsav)).
+    Cdr0 : array_like, optional
+        Initial condition for the rate change autocorrelation function. If None, defaults to 1e3 plus the squared difference of the mean rates.
+    SigdW : array_like, optional
+        2D Array of the variance of the total weight to be used in the computation of the rate change autocorrelation function. If None, defaults to SigW.
+        
+    Returns
+    -------
+    array_like
+        3D Array of the rate change autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        1D Boolean array indicating whether the corresponding population converged.
+    '''
     Ntyp = len(muH)
     Nint = round((Twrm+Tsav)/dt)+1
     Nclc = round(1.5*Tsav/dt)+1
@@ -843,6 +886,49 @@ def diff_gauss_dmft(tau,muW,SigW,muH,SigH,R_fn,Twrm,Tsav,dt,r,Cr,Cdr0=None,SigdW
             np.mean(Cdr_diag[:,-Nsav:],axis=1) < 1e-3
 
 def diff_gauss_struct_dmft(tau,muWs,SigWs,muHs,SigHs,R_fn,mu_fn,Sig_fn,Sigd_fn,Twrm,Tsav,dt,rs,Crs,Cdrs0):
+    '''
+    Solve for stationary rate change autocorrelation given the rate moments without and with a perturbation in a structured network by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    muWs : array_like
+        Array of mean total weights. Shape depends on implementation of R_fn.
+    SigWs : array_like
+        Array of variance of total weights. Shape depends on implementation of R_fn.
+    muHs : array_like
+        Array of mean external input. Shape depends on implementation of R_fn.
+    SigHs : array_like
+        Array of variance of external input. Shape depends on implementation of R_fn.
+    R_fn : function
+        Function to compute thecross-correlation of the rates without and with the perturbation. It should take as input the 2D arrays of the unperturbed and perturbed means, variances, and the unperturbed-perturbed covariance of the net inputs, and a 2D array to where the computed cross-correlation of the rates will be stored (inputs should have shape (Nsit,Ntyp)).
+    mu_fn : function
+        Function to compute the mean inputs. It's inputs should be (rs,muWs,muHs,mus), where rs is the 2D array of the mean rates at a given time (shape (Nsit,Ntyp)) and mus is the 2D array where the computed mean inputs at that time will be stored (shape (Nsit,Ntyp)).
+    Sig_fn : function
+        Function to compute the autocovariance of the inputs. It's inputs should be (Crs,SigWs,SigHs,Sigs), where Crs is the 2D array of the rate autocorrelations at a given time pair (shape (Nsit,Ntyp)) and Sigs is the 2D array where the computed autocovariance of the inputs at that time pair will be stored (shape (Nsit,Ntyp)).
+    Sigd_fn : function
+        Function to compute the autocovariance of the change in inputs. It's inputs should be (Cdrs,SigWs,Sigds), where Cdrs is the 2D array of the rate change autocorrelations at a given time pair (shape (Nsit,Ntyp)) and Sigds is the 2D array where the computed autocovariance of the input changes at that time pair will be stored (shape (Nsit,Ntyp)).
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    rs : array_like
+        2D Doubled array of the stationary mean rates without and with the perturbation (shape: (Nsit,2*Ntyp)).
+    Crs : array_like
+        3D Doubled array of the stationary rate autocorrelations without and with the perturbation (shape: (Nsit,2*Ntyp,Nsav)).
+    Cdrs0 : array_like
+        Initial condition for the rate change autocorrelation function. Not optional for this function, as no clear default is available.
+        
+    Returns
+    -------
+    array_like
+        3D Array of the rate change autocorrelation function over time (shape: (Nsit,Ntyp,Nint,Nint)).
+    array_like
+        2D Boolean array indicating whether the corresponding population converged.
+    '''
     Nsit = muHs.shape[0]
     Ntyp = muHs.shape[1]
     Nint = round((Twrm+Tsav)/dt)+1
@@ -919,16 +1005,94 @@ def diff_gauss_struct_dmft(tau,muWs,SigWs,muHs,SigHs,R_fn,mu_fn,Sig_fn,Sigd_fn,T
         (np.max(Cdrs_diag[:,:,-Nsav:],axis=-1)-np.min(Cdrs_diag[:,:,-Nsav:],axis=-1))/\
             np.mean(Cdrs_diag[:,:,-Nsav:],axis=-1) < 1e-3
 
-def sparse_dmft(tau,W,K,H,eH,M_fn,C_fn,Twrm,Tsav,dt,r0=None,Cr0=None):
+def sparse_dmft(tau,W,K,H,CVH,M_fn,C_fn,Twrm,Tsav,dt,r0=None,Cr0=None):
+    '''
+    Solve for stationary rate moments in a sparse network by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    W : array_like
+        2D Array of synaptic efficacies per connection type.
+    K : float or array_like
+        The structured mean out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type.
+    H : array_like
+        1D Array of mean external input per cell type.
+    CVH : float or array_like
+        The coefficient of variation of the external inputs. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the CV of the input per cell type.
+    M_fn : function
+        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input, and a 1D array to where the computed mean rates will be stored.
+    C_fn : function
+        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs, and a 1D array to where the computed autocorrelation of the rates will be stored.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    r0 : array_like, optional
+        Initial condition for the mean rates. If None, defaults to 1e-8 for all cell types.
+    Cr0 : array_like, optional
+        Initial condition for the autocorrelation function. If None, defaults to 1e2 for all cell types for all time lags.
+        
+    Returns
+    -------
+    array_like
+        2D Array of the mean rates over time (shape: (Ntyp,Nint)).
+    array_like
+        3D Array of the autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        1D Boolean array indicating whether the corresponding population converged.
+    '''
     muW = tau[:,None]*W*K
     SigW = tau[:,None]**2*W**2*K
     
     muH = tau*H
-    SigH = (muH*eH)**2
+    SigH = (muH*CVH)**2
     
     return gauss_dmft(tau,muW,SigW,muH,SigH,M_fn,C_fn,Twrm,Tsav,dt,r0=r0,Cr0=Cr0)
 
-def doub_sparse_dmft(tau,W,K,H,eH,M_fns,C_fns,Twrm,Tsav,dt,rb0=None,Crb0=None):
+def doub_sparse_dmft(tau,W,K,H,CVH,M_fns,C_fns,Twrm,Tsav,dt,r0=None,Cr0=None):
+    '''
+    Solve for stationary rate moments simultaneously without and with a perturbation in a sparse network by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    W : array_like
+        2D Array of synaptic efficacies per connection type.
+    K : float or array_like
+        The structured mean out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type.
+    H : array_like
+        1D Array of mean external input per cell type.
+    CVH : float or array_like
+        The coefficient of variation of the external inputs. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the CV of the input per cell type.
+    M_fns : list of functions
+        List of two functions to compute the mean rates. Each function should take as input the 1D arrays of the mean and variance of the net input, and a 1D array to where the computed mean rates will be stored. The first function is for the unperturbed system, and the second function is for the perturbed system.
+    C_fns : list of functions
+        List of two functions to compute the autocorrelation of the rates. Each function should take as input the 1D arrays of the mean, variance, and covariance of the net inputs, and a 1D array to where the computed autocorrelation of the rates will be stored. The first function is for the unperturbed system, and the second function is for the perturbed system.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    r0 : array_like, optional
+        Initial condition for the mean rates. If None, defaults to 1e-8 for all cell types.
+    Cr0 : array_like, optional
+        Initial condition for the autocorrelation function. If None, defaults to 1e2 for all cell types for all time lags.
+        
+    Returns
+    -------
+    array_like
+        2D Array of the mean rates over time (shape: (2*Ntyp,Nint)).
+    array_like
+        3D Array of the autocorrelation function over time (shape: (2*Ntyp,Nint,Nint)).
+    array_like
+        1D Boolean array indicating whether the corresponding population converged.
+    '''
     Ntyp = len(H)
     
     doub_tau = doub_vec(tau)
@@ -944,51 +1108,240 @@ def doub_sparse_dmft(tau,W,K,H,eH,M_fns,C_fns,Twrm,Tsav,dt,rb0=None,Crb0=None):
         C_fns[0](mui[:Ntyp],Sigii[:Ntyp],Sigij[:Ntyp],out[:Ntyp])
         C_fns[1](mui[Ntyp:],Sigii[Ntyp:],Sigij[Ntyp:],out[Ntyp:])
         
-    return sparse_dmft(doub_tau,doub_W,doub_K,doub_H,eH,doub_M,doub_C,Twrm,Tsav,dt,rb0,Crb0)
+    return sparse_dmft(doub_tau,doub_W,doub_K,doub_H,CVH,doub_M,doub_C,Twrm,Tsav,dt,r0,Cr0)
 
-def diff_sparse_dmft(tau,W,K,H,eH,R_fn,Twrm,Tsav,dt,r,Cr,Cdr0=None):
+def diff_sparse_dmft(tau,W,K,H,CVH,R_fn,Twrm,Tsav,dt,r,Cr,Cdr0=None):
+    '''
+    Solve for stationary rate change autocorrelation given the rate moments without and with a perturbation in a sparse network by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    W : array_like
+        2D Array of synaptic efficacies per connection type.
+    K : float or array_like
+        The structured mean out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type.
+    H : array_like
+        1D Array of mean external input per cell type.
+    CVH : float or array_like
+        The coefficient of variation of the external inputs. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the CV of the input per cell type.
+    R_fn : function
+        Function to compute the cross-correlation of the rates without and with the perturbation. It should take as input the 1D arrays of the unperturbed and perturbed means, variances, and the unperturbed-perturbed covariance of the net inputs, and a 1D array to where the computed cross-correlation of the rates will be stored.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    r : array_like
+        1D Doubled array of the stationary mean rates without and with the perturbation (shape: (2*Ntyp,)).
+    Cr : array_like
+        2D Doubled array of the stationary rate autocorrelations without and with the perturbation (shape: (2*Ntyp,Nsav)).
+    Cdr0 : array_like, optional
+        Initial condition for the rate change autocorrelation function. If None, defaults to 1e3 plus the squared difference of the mean rates.
+        
+    Returns
+    -------
+    array_like
+        3D Array of the rate change autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        1D Boolean array indicating whether the corresponding population converged.
+    '''
     muW = tau[:,None]*W*K
     SigW = tau[:,None]**2*W**2*K
     
     muH = tau*H
-    SigH = (muH*eH)**2
+    SigH = (muH*CVH)**2
     
     return diff_gauss_dmft(tau,muW,SigW,muH,SigH,R_fn,Twrm,Tsav,dt,r,Cr,Cdr0=Cdr0)
     
 def get_solve_width(sa,L=180):
+    '''
+    Get a function to solve for the width of the wrapped Gaussian kernel given the normalized baseline-subtracted value at a predefined orientation value relative to the stimulus.
+    
+    Parameters
+    ----------
+    sa : float
+        The predefined auxiliary orientation location relative to the stimulus.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+        
+    Returns
+    -------
+    function
+        Function to solve for the width of the wrapped Gaussian kernel given the normalized baseline-subtracted value at a predefined orientation value relative to the stimulus.
+    '''
     widths = np.linspace(1,L*3/4,135)
     fbars = basesubwrapnorm(sa,widths,L)
     max_fbar = np.max(fbars)
     min_fbar = np.min(fbars)
-    widths_vs_fbars_itp = interp1d(fbars,widths)
+    widths_vs_fbars_itp = interm1d(fbars,widths)
     def solve_widths(fbar):
         return widths_vs_fbars_itp(np.fmax(min_fbar,np.fmin(max_fbar,fbar)))
     return solve_widths
     
 def get_2feat_solve_width(sa,dori=45,L=180):
+    '''
+    Get a function to solve for the widths of two identical but offset wrapped Gaussian kernel given the normalized baseline-subtracted value at a predefined orientation value relative to the right-most stimulus.
+    
+    Parameters
+    ----------
+    sa : float
+        The predefined auxiliary orientation location relative to the right-most stimulus.
+    dori : int, optional
+        The offset between the two identical wrapped Gaussian kernel centers. Default is 45.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+        
+    Returns
+    -------
+    function
+        Function to solve for the widths of two identical but offset wrapped Gaussian kernel given the normalized baseline-subtracted value at a predefined orientation value relative to the right-most stimulus.
+    '''
     widths = np.linspace(1,L*3/4,135)
     fbars = (basesubwrapnorm(sa,widths,L) + basesubwrapnorm(sa+dori,widths,L)) /\
         (1 + basesubwrapnorm(dori,widths,L))
     max_fbar = np.max(fbars)
     min_fbar = np.min(fbars)
-    widths_vs_fbars_itp = interp1d(fbars,widths)
+    widths_vs_fbars_itp = interm1d(fbars,widths)
     def solve_widths(fbar):
         return widths_vs_fbars_itp(np.fmax(min_fbar,np.fmin(max_fbar,fbar)))
     return solve_widths
 
 def unstruct_fact(s,L=180):
+    '''
+    Compute the convolution of a uniform distribution with a normalized baseline-subtracted wrapped Gaussian.
+    
+    Parameters
+    ----------
+    s : float
+        The width of the normalized baseline-subtracted wrapped Gaussian.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+        
+    Returns
+    -------
+    float
+        The convolution of a uniform distribution with the normalized baseline-subtracted wrapped Gaussian of width s.
+    '''
     return (1/L-wrapnormdens(L/2,s,L))/(wrapnormdens(0,s,L)-wrapnormdens(L/2,s,L))
 
 def struct_fact(x,sconv,sorig,L=180):
+    '''
+    Compute the convolution of a wrapped Gaussian distribution with a normalized baseline-subtracted wrapped Gaussian.
+    
+    Parameters
+    ----------
+    x : float
+        The orientation value at which to compute the convolution relative to the normalized baseline-subtracted wrapped Gaussian center.
+    sconv : float
+        The width of the convolution of the wrapped Gaussian distribution with the Gaussian component of the normalized baseline-subtracted wrapped Gaussian.
+    sorig : float
+        The width of the Gaussian component of the normalized baseline-subtracted wrapped Gaussian.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+        
+    Returns
+    -------
+    float
+        The convolution of a wrapped Gaussian distribution with the normalized baseline-subtracted wrapped Gaussian of width sorig, where the width of the Gaussian part of the convolution has width sconv, evaluated at x.
+    '''
     return (wrapnormdens(x,sconv,L)-wrapnormdens(L/2,sorig,L))/\
         (wrapnormdens(0,sorig,L)-wrapnormdens(L/2,sorig,L))
     
 def inv_overlap(xs,ss,L=180):
+    '''
+    Compute the inverse of the overlap matrix for a mixture of normalized baseline-subtraced wrapped Gaussians.
+    
+    Parameters
+    ----------
+    xs : array_like
+        1D Array of the normalized baseline-subtracted wrapped Gaussian centers.
+    ss : array_like
+        1D Array of the widths of the normalized baseline-subtracted wrapped Gaussians.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+        
+    Returns
+    -------
+    array_like
+        2D Array of the inverse of the overlap matrix for the mixture of normalized baseline-subtracted wrapped Gaussians.
+    '''
     overlap_mat = basesubwrapnorm(xs[None,:,None]-xs[None,None,:],ss[:,None,:],L)
     return np.linalg.inv(overlap_mat)
 
-def sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
-                rb0=None,ra0=None,rp0=None,Crb0=None,Cra0=None,Crp0=None,Kb=None,L=180):
+def sparse_ring_dmft(tau,W,K,Hb,Hm,CVH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
+                rb0=None,ra0=None,rm0=None,Crb0=None,Cra0=None,Crm0=None,Kb=None,L=180):
+    '''
+    Solve for stationary three-site rate moments in a sparse ring network assuming baseline-plus-Gaussian rate moments by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    W : array_like
+        2D Array of synaptic efficacies per connection type.
+    K : float or array_like
+        The structured mean out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type.
+    Hb : array_like
+        1D Array of baseline mean external input per cell type.
+    Hm : array_like
+        1D Array of matched mean external input per cell type.
+    CVH : float or array_like
+        The coefficient of variation of the external inputs. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the CV of the input per cell type.
+    sW : float or array_like
+        The connection probability width. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the connection probability width per presynaptic cell type. If a 2D array then the elements should list the connection probability width per connection type.
+    sH : float or array_like
+        The external input width. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the external input width per cell type.
+    M_fn : function
+        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input, and a 1D array to where the computed mean rates will be stored.
+    C_fn : function
+        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs, and a 1D array to where the computed autocorrelation of the rates will be stored.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    rb0 : array_like, optional
+        Initial condition for the baseline mean rates. If None, defaults to 1 for all cell types.
+    ra0 : array_like, optional
+        Initial condition for the auxiliary mean rates. If None, defaults to 2 for all cell types.
+    rm0 : array_like, optional
+        Initial condition for the matched mean rates. If None, defaults to 5 for all cell types.
+    Crb0 : array_like, optional
+        Initial condition for the baseline autocorrelation function. If None, defaults to 1e2 for all cell types for all time lags.
+    Cra0 : array_like, optional
+        Initial condition for the auxliary autocorrelation function. If None, defaults to 4e2 for all cell types for all time lags.
+    Crm0 : array_like, optional
+        Initial condition for the matched autocorrelation function. If None, defaults to 25e2 for all cell types for all time lags.
+    Kb : float or array_like, optional
+        The mean unstructured out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type. If None, defaults to K.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+        
+    Returns
+    -------
+    array_like
+        2D Array of the baseline mean rates over time (shape: (Ntyp,Nint)).
+    array_like
+        2D Array of the auxiliary mean rates over time (shape: (Ntyp,Nint)).
+    array_like
+        2D Array of the matched mean rates over time (shape: (Ntyp,Nint)).
+    array_like
+        3D Array of the baseline autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        3D Array of the auxiliary autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        3D Array of the matched autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        1D Boolean array indicating whether the corresponding baseline population converged.
+    array_like
+        1D Boolean array indicating whether the corresponding auxiliary population converged.
+    array_like
+        1D Boolean array indicating whether the corresponding matched population converged.
+    '''
     if Kb is None:
         Kb = np.zeros_like(K)
         
@@ -998,14 +1351,14 @@ def sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
         rb0 = 1*np.ones((Ntyp),dtype=np.float32)
     if ra0 is None:
         ra0 = 2*np.ones((Ntyp),dtype=np.float32)
-    if rp0 is None:
-        rp0 = 5*np.ones((Ntyp),dtype=np.float32)
+    if rm0 is None:
+        rm0 = 5*np.ones((Ntyp),dtype=np.float32)
     if Crb0 is None:
         Crb0 = 1e2*np.ones((Ntyp,1),dtype=np.float32)
     if Cra0 is None:
         Cra0 = 4e2*np.ones((Ntyp,1),dtype=np.float32)
-    if Crp0 is None:
-        Crp0 = 25e2*np.ones((Ntyp,1),dtype=np.float32)
+    if Crm0 is None:
+        Crm0 = 25e2*np.ones((Ntyp,1),dtype=np.float32)
     
     solve_width = get_solve_width(sa,L)
     
@@ -1017,31 +1370,31 @@ def sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
     SigW = tau[:,None]**2*W**2*K
     
     muHb = tau*Hb
-    SigHb = (muHb*eH)**2
-    muHa = tau*(Hb+(Hp-Hb)*basesubwrapnorm(sa,sH,L))
-    SigHa = (muHa*eH)**2
-    muHp = tau*Hp
-    SigHp = (muHp*eH)**2
+    SigHb = (muHb*CVH)**2
+    muHa = tau*(Hb+(Hm-Hb)*basesubwrapnorm(sa,sH,L))
+    SigHa = (muHa*CVH)**2
+    muHm = tau*Hm
+    SigHm = (muHm*CVH)**2
     
     muWs = np.concatenate([muWb[None,:,:],muW[None,:,:]],0)
     SigWs = np.concatenate([SigWb[None,:,:],SigW[None,:,:]],0)
-    muHs = np.concatenate([muHb[None,:],muHa[None,:],muHp[None,:]],0)
-    SigHs = np.concatenate([SigHb[None,:],SigHa[None,:],SigHp[None,:]],0)
-    rs0 = np.concatenate([rb0[None,:],ra0[None,:],rp0[None,:]],0)
-    Crs0 = np.concatenate([Crb0[None,:,:],Cra0[None,:,:],Crp0[None,:,:]],0)
+    muHs = np.concatenate([muHb[None,:],muHa[None,:],muHm[None,:]],0)
+    SigHs = np.concatenate([SigHb[None,:],SigHa[None,:],SigHm[None,:]],0)
+    rs0 = np.concatenate([rb0[None,:],ra0[None,:],rm0[None,:]],0)
+    Crs0 = np.concatenate([Crb0[None,:,:],Cra0[None,:,:],Crm0[None,:,:]],0)
     
     def mu_fn(rsi,muWs,muHs,musi):
         '''
         rbi = rsi[0]
         rai = rsi[1]
-        rpi = rsi[2]
+        rmi = rsi[2]
         
         muWb = muWs[0]
         muW = muWs[1]
         
         muHb = muHs[0]
         muHa = muHs[1]
-        muHp = muHs[2]
+        muHm = muHs[2]
         
         mubi = musi[0]
         muai = musi[1]
@@ -1049,24 +1402,24 @@ def sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
         '''
         sri = solve_width((rsi[1]-rsi[0])/(rsi[2]-rsi[0]))
         sWri = np.sqrt(sW2+sri**2)
-        rpmbi = rsi[2] - rsi[0]
-        musi[0] = (muWs[1]+muWs[0])@rsi[0] + (unstruct_fact(sri,L)*muWs[0])@rpmbi + muHs[0]
-        musi[1] = musi[0] + (struct_fact(sa,sWri,sri,L)*muWs[1])@rpmbi + muHs[1]-muHs[0]
-        musi[2] = musi[0] + (struct_fact(0,sWri,sri,L)*muWs[1])@rpmbi + muHs[2]-muHs[0]
-        musi[0] = musi[0] + (struct_fact(L/2,sWri,sri,L)*muWs[1])@rpmbi
+        rmsubbi = rsi[2] - rsi[0]
+        musi[0] = (muWs[1]+muWs[0])@rsi[0] + (unstruct_fact(sri,L)*muWs[0])@rmsubbi + muHs[0]
+        musi[1] = musi[0] + (struct_fact(sa,sWri,sri,L)*muWs[1])@rmsubbi + muHs[1]-muHs[0]
+        musi[2] = musi[0] + (struct_fact(0,sWri,sri,L)*muWs[1])@rmsubbi + muHs[2]-muHs[0]
+        musi[0] = musi[0] + (struct_fact(L/2,sWri,sri,L)*muWs[1])@rmsubbi
         
     def Sig_fn(Crsi,SigWs,SigHs,Sigsi):
         '''
         Crbi = Crsi[0]
         Crai = Crsi[1]
-        Crpi = Crsi[2]
+        Crmi = Crsi[2]
         
         SigWb = SigWs[0]
         SigW = SigWs[1]
         
         SigHb = SigHs[0]
         SigHa = SigHs[1]
-        SigHp = SigHs[2]
+        SigHm = SigHs[2]
         
         Sigbi = Sigsi[0]
         Sigai = Sigsi[1]
@@ -1074,18 +1427,89 @@ def sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
         '''
         sCri = solve_width((Crsi[1]-Crsi[0])/(Crsi[2]-Crsi[0]))
         sWCri = np.sqrt(sW2+sCri**2)
-        Crpmbi = Crsi[2] - Crsi[0]
-        Sigsi[0] = (SigWs[1]+SigWs[0])@Crsi[0] + (unstruct_fact(sCri,L)*SigWs[0])@Crpmbi + SigHs[0]
-        Sigsi[1] = Sigsi[0] + (struct_fact(sa,sWCri,sCri,L)*SigWs[1])@Crpmbi + SigHs[1]-SigHs[0]
-        Sigsi[2] = Sigsi[0] + (struct_fact(0,sWCri,sCri,L)*SigWs[1])@Crpmbi + SigHs[2]-SigHs[0]
-        Sigsi[0] = Sigsi[0] + (struct_fact(L/2,sWCri,sCri,L)*SigWs[1])@Crpmbi
+        Crmsubbi = Crsi[2] - Crsi[0]
+        Sigsi[0] = (SigWs[1]+SigWs[0])@Crsi[0] + (unstruct_fact(sCri,L)*SigWs[0])@Crmsubbi + SigHs[0]
+        Sigsi[1] = Sigsi[0] + (struct_fact(sa,sWCri,sCri,L)*SigWs[1])@Crmsubbi + SigHs[1]-SigHs[0]
+        Sigsi[2] = Sigsi[0] + (struct_fact(0,sWCri,sCri,L)*SigWs[1])@Crmsubbi + SigHs[2]-SigHs[0]
+        Sigsi[0] = Sigsi[0] + (struct_fact(L/2,sWCri,sCri,L)*SigWs[1])@Crmsubbi
                 
     rs,Crs,convs = gauss_struct_dmft(tau,muWs,SigWs,muHs,SigHs,M_fn,C_fn,mu_fn,Sig_fn,Twrm,Tsav,dt,rs0,Crs0)
     
     return rs[0],rs[1],rs[2],Crs[0],Crs[1],Crs[2],convs[0],convs[1],convs[2]
 
-def sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
-                rb0=None,ra0=None,rp0=None,Crb0=None,Cra0=None,Crp0=None,Kb=None,dori=45,L=180):
+def sparse_2feat_ring_dmft(tau,W,K,Hb,Hm,CVH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
+                rb0=None,ra0=None,rm0=None,Crb0=None,Cra0=None,Crm0=None,Kb=None,dori=45,L=180):
+    '''
+    Solve for stationary three-site rate moments in a sparse ring network driven by two equal contrast visual stimuli assuming baseline-plus-identical-Gaussian-mixture rate moments by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    W : array_like
+        2D Array of synaptic efficacies per connection type.
+    K : float or array_like
+        The structured mean out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type.
+    Hb : array_like
+        1D Array of baseline mean external input per cell type.
+    Hm : array_like
+        1D Array of matched mean external input per cell type.
+    CVH : float or array_like
+        The coefficient of variation of the external inputs. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the CV of the input per cell type.
+    sW : float or array_like
+        The connection probability width. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the connection probability width per presynaptic cell type. If a 2D array then the elements should list the connection probability width per connection type.
+    sH : float or array_like
+        The external input width. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the external input width per cell type.
+    M_fn : function
+        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input, and a 1D array to where the computed mean rates will be stored.
+    C_fn : function
+        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs, and a 1D array to where the computed autocorrelation of the rates will be stored.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    rb0 : array_like, optional
+        Initial condition for the baseline mean rates. If None, defaults to 1 for all cell types.
+    ra0 : array_like, optional
+        Initial condition for the auxiliary mean rates. If None, defaults to 2 for all cell types.
+    rm0 : array_like, optional
+        Initial condition for the matched mean rates. If None, defaults to 5 for all cell types.
+    Crb0 : array_like, optional
+        Initial condition for the baseline autocorrelation function. If None, defaults to 1e2 for all cell types for all time lags.
+    Cra0 : array_like, optional
+        Initial condition for the auxliary autocorrelation function. If None, defaults to 4e2 for all cell types for all time lags.
+    Crm0 : array_like, optional
+        Initial condition for the matched autocorrelation function. If None, defaults to 25e2 for all cell types for all time lags.
+    Kb : float or array_like, optional
+        The mean unstructured out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type. If None, defaults to K.
+    dori : int, optional
+        The offset between the two identical wrapped Gaussian kernel centers. Default is 45.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+        
+    Returns
+    -------
+    array_like
+        2D Array of the baseline mean rates over time (shape: (Ntyp,Nint)).
+    array_like
+        2D Array of the auxiliary mean rates over time (shape: (Ntyp,Nint)).
+    array_like
+        2D Array of the matched mean rates over time (shape: (Ntyp,Nint)).
+    array_like
+        3D Array of the baseline autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        3D Array of the auxiliary autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        3D Array of the matched autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        1D Boolean array indicating whether the corresponding baseline population converged.
+    array_like
+        1D Boolean array indicating whether the corresponding auxiliary population converged.
+    array_like
+        1D Boolean array indicating whether the corresponding matched population converged.
+    '''
     if Kb is None:
         Kb = np.zeros_like(K)
         
@@ -1095,14 +1519,14 @@ def sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
         rb0 = 1*np.ones((Ntyp),dtype=np.float32)
     if ra0 is None:
         ra0 = 2*np.ones((Ntyp),dtype=np.float32)
-    if rp0 is None:
-        rp0 = 5*np.ones((Ntyp),dtype=np.float32)
+    if rm0 is None:
+        rm0 = 5*np.ones((Ntyp),dtype=np.float32)
     if Crb0 is None:
         Crb0 = 1e2*np.ones((Ntyp,1),dtype=np.float32)
     if Cra0 is None:
         Cra0 = 4e2*np.ones((Ntyp,1),dtype=np.float32)
-    if Crp0 is None:
-        Crp0 = 25e2*np.ones((Ntyp,1),dtype=np.float32)
+    if Crm0 is None:
+        Crm0 = 25e2*np.ones((Ntyp,1),dtype=np.float32)
     
     xpeaks = np.array([0,-dori])
     solve_width = get_2feat_solve_width(sa,dori,L)
@@ -1115,31 +1539,31 @@ def sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
     SigW = tau[:,None]**2*W**2*K
     
     muHb = tau*Hb
-    SigHb = (muHb*eH)**2
-    muHa = tau*(Hb+(Hp-Hb)*(basesubwrapnorm(sa,sH,L)+basesubwrapnorm(dori+sa,sH,L)))
-    SigHa = (muHa*eH)**2
-    muHp = tau*(Hp+(Hp-Hb)*basesubwrapnorm(dori,sH,L))
-    SigHp = (muHp*eH)**2
+    SigHb = (muHb*CVH)**2
+    muHa = tau*(Hb+(Hm-Hb)*(basesubwrapnorm(sa,sH,L)+basesubwrapnorm(dori+sa,sH,L)))
+    SigHa = (muHa*CVH)**2
+    muHm = tau*(Hm+(Hm-Hb)*basesubwrapnorm(dori,sH,L))
+    SigHm = (muHm*CVH)**2
     
     muWs = np.concatenate([muWb[None,:,:],muW[None,:,:]],0)
     SigWs = np.concatenate([SigWb[None,:,:],SigW[None,:,:]],0)
-    muHs = np.concatenate([muHb[None,:],muHa[None,:],muHp[None,:]],0)
-    SigHs = np.concatenate([SigHb[None,:],SigHa[None,:],SigHp[None,:]],0)
-    rs0 = np.concatenate([rb0[None,:],ra0[None,:],rp0[None,:]],0)
-    Crs0 = np.concatenate([Crb0[None,:,:],Cra0[None,:,:],Crp0[None,:,:]],0)
+    muHs = np.concatenate([muHb[None,:],muHa[None,:],muHm[None,:]],0)
+    SigHs = np.concatenate([SigHb[None,:],SigHa[None,:],SigHm[None,:]],0)
+    rs0 = np.concatenate([rb0[None,:],ra0[None,:],rm0[None,:]],0)
+    Crs0 = np.concatenate([Crb0[None,:,:],Cra0[None,:,:],Crm0[None,:,:]],0)
     
     def mu_fn(rsi,muWs,muHs,musi):
         '''
         rbi = rsi[0]
         rai = rsi[1]
-        rpi = rsi[2]
+        rmi = rsi[2]
         
         muWb = muWs[0]
         muW = muWs[1]
         
         muHb = muHs[0]
         muHa = muHs[1]
-        muHp = muHs[2]
+        muHm = muHs[2]
         
         mubi = musi[0]
         muai = musi[1]
@@ -1148,25 +1572,25 @@ def sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
         sri = solve_width((rsi[1]-rsi[0])/(rsi[2]-rsi[0]))
         rOinv = np.sum(inv_overlap(xpeaks,sri[:,None])[:,:,0],-1)
         sWri = np.sqrt(sW2+sri**2)
-        rpmbi = (rsi[2] - rsi[0])*rOinv
-        musi[0] = (muWs[1]+muWs[0])@rsi[0] + (unstruct_fact(sri,L)*muWs[0])@rpmbi + muHs[0]
-        musi[1] = musi[0] + ((struct_fact(sa,sWri,sri,L)+struct_fact(sa+dori,sWri,sri,L))*muWs[1])@rpmbi +\
+        rmsubbi = (rsi[2] - rsi[0])*rOinv
+        musi[0] = (muWs[1]+muWs[0])@rsi[0] + (unstruct_fact(sri,L)*muWs[0])@rmsubbi + muHs[0]
+        musi[1] = musi[0] + ((struct_fact(sa,sWri,sri,L)+struct_fact(sa+dori,sWri,sri,L))*muWs[1])@rmsubbi +\
             muHs[1]-muHs[0]
-        musi[2] = musi[0] + ((struct_fact(0,sWri,sri,L)+struct_fact(dori,sWri,sri,L))*muWs[1])@rpmbi + muHs[2]-muHs[0]
-        musi[0] = musi[0] + (2*struct_fact(L/2,sWri,sri,L)*muWs[1])@rpmbi
+        musi[2] = musi[0] + ((struct_fact(0,sWri,sri,L)+struct_fact(dori,sWri,sri,L))*muWs[1])@rmsubbi + muHs[2]-muHs[0]
+        musi[0] = musi[0] + (2*struct_fact(L/2,sWri,sri,L)*muWs[1])@rmsubbi
         
     def Sig_fn(Crsi,SigWs,SigHs,Sigsi):
         '''
         Crbi = Crsi[0]
         Crai = Crsi[1]
-        Crpi = Crsi[2]
+        Crmi = Crsi[2]
         
         SigWb = SigWs[0]
         SigW = SigWs[1]
         
         SigHb = SigHs[0]
         SigHa = SigHs[1]
-        SigHp = SigHs[2]
+        SigHm = SigHs[2]
         
         Sigbi = Sigsi[0]
         Sigai = Sigsi[1]
@@ -1175,20 +1599,89 @@ def sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fn,C_fn,Twrm,Tsav,dt,
         sCri = solve_width((Crsi[1]-Crsi[0])/(Crsi[2]-Crsi[0]))
         CrOinv = np.sum(inv_overlap(xpeaks,sCri[:,None])[:,:,0],-1)
         sWCri = np.sqrt(sW2+sCri**2)
-        Crpmbi = (Crsi[2] - Crsi[0])*CrOinv
-        Sigsi[0] = (SigWs[1]+SigWs[0])@Crsi[0] + (unstruct_fact(sCri,L)* SigWs[0])@Crpmbi + SigHs[0]
+        Crmsubbi = (Crsi[2] - Crsi[0])*CrOinv
+        Sigsi[0] = (SigWs[1]+SigWs[0])@Crsi[0] + (unstruct_fact(sCri,L)* SigWs[0])@Crmsubbi + SigHs[0]
         Sigsi[1] = Sigsi[0] + ((struct_fact(sa,sWCri,sCri,L)+\
-            struct_fact(sa+dori,sWCri,sCri,L))*SigWs[1])@Crpmbi + SigHs[1]-SigHs[0]
+            struct_fact(sa+dori,sWCri,sCri,L))*SigWs[1])@Crmsubbi + SigHs[1]-SigHs[0]
         Sigsi[2] = Sigsi[0] + ((struct_fact(0,sWCri,sCri,L)+\
-            struct_fact(dori,sWCri,sCri,L))*SigWs[1])@Crpmbi + SigHs[2]-SigHs[0]
-        Sigsi[0] = Sigsi[0] + (2*struct_fact(L/2,sWCri,sCri,L)*SigWs[1])@Crpmbi
+            struct_fact(dori,sWCri,sCri,L))*SigWs[1])@Crmsubbi + SigHs[2]-SigHs[0]
+        Sigsi[0] = Sigsi[0] + (2*struct_fact(L/2,sWCri,sCri,L)*SigWs[1])@Crmsubbi
                 
     rs,Crs,convs = gauss_struct_dmft(tau,muWs,SigWs,muHs,SigHs,M_fn,C_fn,mu_fn,Sig_fn,Twrm,Tsav,dt,rs0,Crs0)
     
     return rs[0],rs[1],rs[2],Crs[0],Crs[1],Crs[2],convs[0],convs[1],convs[2]
 
-def doub_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fns,C_fns,Twrm,Tsav,dt,
-                     rb0=None,ra0=None,rp0=None,Crb0=None,Cra0=None,Crp0=None,Kb=None,L=180):
+def doub_sparse_ring_dmft(tau,W,K,Hb,Hm,CVH,sW,sH,sa,M_fns,C_fns,Twrm,Tsav,dt,
+                     rb0=None,ra0=None,rm0=None,Crb0=None,Cra0=None,Crm0=None,Kb=None,L=180):
+    '''
+    Solve for stationary three-site rate moments simultaneously without and with a perturbation in a sparse ring network assuming baseline-plus-Gaussian rate moments by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    W : array_like
+        2D Array of synaptic efficacies per connection type.
+    K : float or array_like
+        The structured mean out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type.
+    Hb : array_like
+        1D Array of baseline mean external input per cell type.
+    Hm : array_like
+        1D Array of matched mean external input per cell type.
+    CVH : float or array_like
+        The coefficient of variation of the external inputs. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the CV of the input per cell type.
+    sW : float or array_like
+        The connection probability width. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the connection probability width per presynaptic cell type. If a 2D array then the elements should list the connection probability width per connection type.
+    sH : float or array_like
+        The external input width. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the external input width per cell type.
+    M_fn : function
+        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input, and a 1D array to where the computed mean rates will be stored.
+    C_fn : function
+        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs, and a 1D array to where the computed autocorrelation of the rates will be stored.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    rb0 : array_like, optional
+        Initial condition for the baseline mean rates. If None, defaults to 1 for all cell types.
+    ra0 : array_like, optional
+        Initial condition for the auxiliary mean rates. If None, defaults to 2 for all cell types.
+    rm0 : array_like, optional
+        Initial condition for the matched mean rates. If None, defaults to 5 for all cell types.
+    Crb0 : array_like, optional
+        Initial condition for the baseline autocorrelation function. If None, defaults to 1e2 for all cell types for all time lags.
+    Cra0 : array_like, optional
+        Initial condition for the auxliary autocorrelation function. If None, defaults to 4e2 for all cell types for all time lags.
+    Crm0 : array_like, optional
+        Initial condition for the matched autocorrelation function. If None, defaults to 25e2 for all cell types for all time lags.
+    Kb : float or array_like, optional
+        The mean unstructured out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type. If None, defaults to K.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+        
+    Returns
+    -------
+    array_like
+        2D Array of the baseline mean rates over time (shape: (2*Ntyp,Nint)).
+    array_like
+        2D Array of the auxiliary mean rates over time (shape: (2*Ntyp,Nint)).
+    array_like
+        2D Array of the matched mean rates over time (shape: (2*Ntyp,Nint)).
+    array_like
+        3D Array of the baseline autocorrelation function over time (shape: (2*Ntyp,Nint,Nint)).
+    array_like
+        3D Array of the auxiliary autocorrelation function over time (shape: (2*Ntyp,Nint,Nint)).
+    array_like
+        3D Array of the matched autocorrelation function over time (shape: (2*Ntyp,Nint,Nint)).
+    array_like
+        1D Boolean array indicating whether the corresponding baseline population converged.
+    array_like
+        1D Boolean array indicating whether the corresponding auxiliary population converged.
+    array_like
+        1D Boolean array indicating whether the corresponding matched population converged.
+    '''
     if Kb is None:
         doub_Kb = None
     else:
@@ -1200,7 +1693,7 @@ def doub_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fns,C_fns,Twrm,Tsav,dt,
     doub_W = doub_mat(W)
     doub_K = doub_vec(K)
     doub_Hb = doub_vec(Hb)
-    doub_Hp = doub_vec(Hp)
+    doub_Hm = doub_vec(Hm)
     doub_sW = doub_mat(sW)
     doub_sH = doub_vec(sH)
     
@@ -1212,11 +1705,82 @@ def doub_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fns,C_fns,Twrm,Tsav,dt,
         C_fns[0](mui[:Ntyp],Sigii[:Ntyp],Sigij[:Ntyp],out[:Ntyp])
         C_fns[1](mui[Ntyp:],Sigii[Ntyp:],Sigij[Ntyp:],out[Ntyp:])
         
-    return sparse_ring_dmft(doub_tau,doub_W,doub_K,doub_Hb,doub_Hp,eH,doub_sW,doub_sH,sa,doub_M,doub_C,Twrm,Tsav,dt,
-                      rb0,ra0,rp0,Crb0,Cra0,Crp0,Kb=doub_Kb,L=L)
+    return sparse_ring_dmft(doub_tau,doub_W,doub_K,doub_Hb,doub_Hm,CVH,doub_sW,doub_sH,sa,doub_M,doub_C,Twrm,Tsav,dt,
+                      rb0,ra0,rm0,Crb0,Cra0,Crm0,Kb=doub_Kb,L=L)
 
-def doub_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fns,C_fns,Twrm,Tsav,dt,
-                     rb0=None,ra0=None,rp0=None,Crb0=None,Cra0=None,Crp0=None,Kb=None,dori=45,L=180):
+def doub_sparse_2feat_ring_dmft(tau,W,K,Hb,Hm,CVH,sW,sH,sa,M_fns,C_fns,Twrm,Tsav,dt,
+                     rb0=None,ra0=None,rm0=None,Crb0=None,Cra0=None,Crm0=None,Kb=None,dori=45,L=180):
+    '''
+    Solve for stationary three-site rate moments simultaneously without and with a perturbation in a sparse ring network driven by two equal contrast visual stimuli assuming baseline-plus-identical-Gaussian-mixture rate moments by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    W : array_like
+        2D Array of synaptic efficacies per connection type.
+    K : float or array_like
+        The structured mean out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type.
+    Hb : array_like
+        1D Array of baseline mean external input per cell type.
+    Hm : array_like
+        1D Array of matched mean external input per cell type.
+    CVH : float or array_like
+        The coefficient of variation of the external inputs. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the CV of the input per cell type.
+    sW : float or array_like
+        The connection probability width. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the connection probability width per presynaptic cell type. If a 2D array then the elements should list the connection probability width per connection type.
+    sH : float or array_like
+        The external input width. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the external input width per cell type.
+    M_fn : function
+        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input, and a 1D array to where the computed mean rates will be stored.
+    C_fn : function
+        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs, and a 1D array to where the computed autocorrelation of the rates will be stored.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    rb0 : array_like, optional
+        Initial condition for the baseline mean rates. If None, defaults to 1 for all cell types.
+    ra0 : array_like, optional
+        Initial condition for the auxiliary mean rates. If None, defaults to 2 for all cell types.
+    rm0 : array_like, optional
+        Initial condition for the matched mean rates. If None, defaults to 5 for all cell types.
+    Crb0 : array_like, optional
+        Initial condition for the baseline autocorrelation function. If None, defaults to 1e2 for all cell types for all time lags.
+    Cra0 : array_like, optional
+        Initial condition for the auxliary autocorrelation function. If None, defaults to 4e2 for all cell types for all time lags.
+    Crm0 : array_like, optional
+        Initial condition for the matched autocorrelation function. If None, defaults to 25e2 for all cell types for all time lags.
+    Kb : float or array_like, optional
+        The mean unstructured out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type. If None, defaults to K.
+    dori : int, optional
+        The offset between the two identical wrapped Gaussian kernel centers. Default is 45.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+        
+    Returns
+    -------
+    array_like
+        2D Array of the baseline mean rates over time (shape: (2*Ntyp,Nint)).
+    array_like
+        2D Array of the auxiliary mean rates over time (shape: (2*Ntyp,Nint)).
+    array_like
+        2D Array of the matched mean rates over time (shape: (2*Ntyp,Nint)).
+    array_like
+        3D Array of the baseline autocorrelation function over time (shape: (2*Ntyp,Nint,Nint)).
+    array_like
+        3D Array of the auxiliary autocorrelation function over time (shape: (2*Ntyp,Nint,Nint)).
+    array_like
+        3D Array of the matched autocorrelation function over time (shape: (2*Ntyp,Nint,Nint)).
+    array_like
+        1D Boolean array indicating whether the corresponding baseline population converged.
+    array_like
+        1D Boolean array indicating whether the corresponding auxiliary population converged.
+    array_like
+        1D Boolean array indicating whether the corresponding matched population converged.
+    '''
     if Kb is None:
         doub_Kb = None
     else:
@@ -1228,7 +1792,7 @@ def doub_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fns,C_fns,Twrm,Tsav,
     doub_W = doub_mat(W)
     doub_K = doub_vec(K)
     doub_Hb = doub_vec(Hb)
-    doub_Hp = doub_vec(Hp)
+    doub_Hm = doub_vec(Hm)
     doub_sW = doub_mat(sW)
     doub_sH = doub_vec(sH)
     
@@ -1240,11 +1804,78 @@ def doub_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,M_fns,C_fns,Twrm,Tsav,
         C_fns[0](mui[:Ntyp],Sigii[:Ntyp],Sigij[:Ntyp],out[:Ntyp])
         C_fns[1](mui[Ntyp:],Sigii[Ntyp:],Sigij[Ntyp:],out[Ntyp:])
         
-    return sparse_2feat_ring_dmft(doub_tau,doub_W,doub_K,doub_Hb,doub_Hp,eH,doub_sW,doub_sH,sa,doub_M,doub_C,
-                                  Twrm,Tsav,dt,rb0,ra0,rp0,Crb0,Cra0,Crp0,Kb=doub_Kb,dori=dori,L=L)
+    return sparse_2feat_ring_dmft(doub_tau,doub_W,doub_K,doub_Hb,doub_Hm,CVH,doub_sW,doub_sH,sa,doub_M,doub_C,
+                                  Twrm,Tsav,dt,rb0,ra0,rm0,Crb0,Cra0,Crm0,Kb=doub_Kb,dori=dori,L=L)
 
-def diff_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,Crb,Cra,Crp,
-                     Cdrb0=None,Cdra0=None,Cdrp0=None,Kb=None,L=180):
+def diff_sparse_ring_dmft(tau,W,K,Hb,Hm,CVH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rm,Crb,Cra,Crm,
+                     Cdrb0=None,Cdra0=None,Cdrm0=None,Kb=None,L=180):
+    '''
+    Solve for stationary rate change autocorrelation given the rate moments without and with a perturbation in a sparse ring network assuming baseline-plus-Gaussian rate moments by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    W : array_like
+        2D Array of synaptic efficacies per connection type.
+    K : float or array_like
+        The structured mean out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type.
+    Hb : array_like
+        1D Array of baseline mean external input per cell type.
+    Hm : array_like
+        1D Array of matched mean external input per cell type.
+    CVH : float or array_like
+        The coefficient of variation of the external inputs. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the CV of the input per cell type.
+    sW : float or array_like
+        The connection probability width. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the connection probability width per presynaptic cell type. If a 2D array then the elements should list the connection probability width per connection type.
+    sH : float or array_like
+        The external input width. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the external input width per cell type.
+    R_fn : function
+        Function to compute the cross-correlation of the rates without and with the perturbation. It should take as input the 1D arrays of the unperturbed and perturbed means, variances, and the unperturbed-perturbed covariance of the net inputs, and a 1D array to where the computed cross-correlation of the rates will be stored.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    rb : array_like
+        1D Doubled array of the stationary baseline mean rates without and with the perturbation (shape: (2*Ntyp,)).
+    ra : array_like
+        1D Doubled array of the stationary auxiliary mean rates without and with the perturbation (shape: (2*Ntyp,)).
+    rm : array_like
+        1D Doubled array of the stationary matched mean rates without and with the perturbation (shape: (2*Ntyp,)).
+    Crb : array_like
+        2D Doubled array of the stationary baseline rate autocorrelations without and with the perturbation (shape: (2*Ntyp,Nsav)).
+    Cra : array_like
+        2D Doubled array of the stationary auxiliary rate autocorrelations without and with the perturbation (shape: (2*Ntyp,Nsav)).
+    Crm : array_like
+        2D Doubled array of the stationary matched rate autocorrelations without and with the perturbation (shape: (2*Ntyp,Nsav)).
+    Cdrb0 : array_like, optional
+        Initial condition for the baseline rate change autocorrelation function. If None, defaults to 1e3 plus the squared difference of the baseline mean rates.
+    Cdra0 : array_like, optional
+        Initial condition for the auxiliary rate change autocorrelation function. If None, defaults to 2e3 plus the squared difference of the auxiliary mean rates.
+    Cdrm0 : array_like, optional
+        Initial condition for the matched rate change autocorrelation function. If None, defaults to 5e3 plus the squared difference of the matched mean rates.
+    Kb : float or array_like, optional
+        The mean unstructured out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type. If None, defaults to K.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+        
+    Returns
+    -------
+    array_like
+        3D Array of the baseline rate change autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        3D Array of the auxiliary rate change autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        3D Array of the matched rate change autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        1D Boolean array indicating whether the corresponding baseline population converged.
+    array_like
+        1D Boolean array indicating whether the corresponding auxiliary population converged.
+    array_like
+        1D Boolean array indicating whether the corresponding matched population converged.
+    '''
     if Kb is None:
         Kb = np.zeros_like(K)
         
@@ -1254,8 +1885,8 @@ def diff_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,C
         Cdrb0 = (rb[Ntyp:] - rb[:Ntyp]).astype(np.float32)[:,None]**2 + 1e3
     if Cdra0 is None:
         Cdra0 = (ra[Ntyp:] - ra[:Ntyp]).astype(np.float32)[:,None]**2 + 2e3
-    if Cdrp0 is None:
-        Cdrp0 = (rp[Ntyp:] - rp[:Ntyp]).astype(np.float32)[:,None]**2 + 5e3
+    if Cdrm0 is None:
+        Cdrm0 = (rm[Ntyp:] - rm[:Ntyp]).astype(np.float32)[:,None]**2 + 5e3
     
     solve_width = get_solve_width(sa,L)
     
@@ -1267,32 +1898,32 @@ def diff_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,C
     SigWb = tau[:,None]**2*W**2*Kb
     
     muHb = tau*Hb
-    SigHb = (muHb*eH)**2
-    muHa = tau*(Hb+(Hp-Hb)*basesubwrapnorm(sa,sH,L))
-    SigHa = (muHa*eH)**2
-    muHp = tau*Hp
-    SigHp = (muHp*eH)**2
+    SigHb = (muHb*CVH)**2
+    muHa = tau*(Hb+(Hm-Hb)*basesubwrapnorm(sa,sH,L))
+    SigHa = (muHa*CVH)**2
+    muHm = tau*Hm
+    SigHm = (muHm*CVH)**2
     
     muWs = np.concatenate([muWb[None,:,:],muW[None,:,:]],0)
     SigWs = np.concatenate([SigWb[None,:,:],SigW[None,:,:]],0)
-    muHs = np.concatenate([muHb[None,:],muHa[None,:],muHp[None,:]],0)
-    SigHs = np.concatenate([SigHb[None,:],SigHa[None,:],SigHp[None,:]],0)
-    rs = np.concatenate([rb[None,:],ra[None,:],rp[None,:]],0)
-    Crs = np.concatenate([Crb[None,:,:],Cra[None,:,:],Crp[None,:,:]],0)
-    Cdrs0 = np.concatenate([Cdrb0[None,:,:],Cdra0[None,:,:],Cdrp0[None,:,:]],0)
+    muHs = np.concatenate([muHb[None,:],muHa[None,:],muHm[None,:]],0)
+    SigHs = np.concatenate([SigHb[None,:],SigHa[None,:],SigHm[None,:]],0)
+    rs = np.concatenate([rb[None,:],ra[None,:],rm[None,:]],0)
+    Crs = np.concatenate([Crb[None,:,:],Cra[None,:,:],Crm[None,:,:]],0)
+    Cdrs0 = np.concatenate([Cdrb0[None,:,:],Cdra0[None,:,:],Cdrm0[None,:,:]],0)
     
     def mu_fn(rs,muWs,muHs,mus):
         '''
         rbi = rs[0]
         rai = rs[1]
-        rpi = rs[2]
+        rmi = rs[2]
         
         muWb = muWs[0]
         muW = muWs[1]
         
         muHb = muHs[0]
         muHa = muHs[1]
-        muHp = muHs[2]
+        muHm = muHs[2]
         
         mubi = mus[0]
         muai = mus[1]
@@ -1300,24 +1931,24 @@ def diff_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,C
         '''
         sr = solve_width((rs[1]-rs[0])/(rs[2]-rs[0]))
         sWr = np.sqrt(doub_mat(sW2)+sr**2)
-        rpmb = rs[2] - rs[0]
-        mus[0] = (muWs[1]+muWs[0])@rs[0] + (unstruct_fact(sr,L)*muWs[0])@rpmb + muHs[0]
-        mus[1] = mus[0] + (struct_fact(sa,sWr,sr,L)*muWs[1])@rpmb + muHs[1]-muHs[0]
-        mus[2] = mus[0] + (struct_fact(0,sWr,sr,L)*muWs[1])@rpmb + muHs[2]-muHs[0]
-        mus[0] = mus[0] + (struct_fact(L/2,sWr,sr,L)*muWs[1])@rpmb
+        rmsubb = rs[2] - rs[0]
+        mus[0] = (muWs[1]+muWs[0])@rs[0] + (unstruct_fact(sr,L)*muWs[0])@rmsubb + muHs[0]
+        mus[1] = mus[0] + (struct_fact(sa,sWr,sr,L)*muWs[1])@rmsubb + muHs[1]-muHs[0]
+        mus[2] = mus[0] + (struct_fact(0,sWr,sr,L)*muWs[1])@rmsubb + muHs[2]-muHs[0]
+        mus[0] = mus[0] + (struct_fact(L/2,sWr,sr,L)*muWs[1])@rmsubb
         
     def Sig_fn(Crs,SigWs,SigHs,Sigs):
         '''
         Crbi = Crs[0]
         Crai = Crs[1]
-        Crpi = Crs[2]
+        Crmi = Crs[2]
         
         SigWb = SigWs[0]
         SigW = SigWs[1]
         
         SigHb = SigHs[0]
         SigHa = SigHs[1]
-        SigHp = SigHs[2]
+        SigHm = SigHs[2]
         
         Sigbi = Sigs[0]
         Sigai = Sigs[1]
@@ -1325,20 +1956,20 @@ def diff_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,C
         '''
         sCr = solve_width((Crs[1]-Crs[0])/(Crs[2]-Crs[0]))
         sWCr = np.sqrt(doub_mat(sW2)[:,:,None]+sCr[None,:,:]**2)
-        Crpmb = Crs[2] - Crs[0]
+        Crmsubb = Crs[2] - Crs[0]
         Sigs[0] = each_matmul((SigWs[1]+SigWs[0])[:,:,None],Crs[0]) +\
-            each_matmul(unstruct_fact(sCr,L)*SigWs[0][:,:,None],Crpmb) + SigHs[0][:,None]
-        Sigs[1] = Sigs[0] + each_matmul(struct_fact(sa,sWCr,sCr,L)*SigWs[1][:,:,None],Crpmb) +\
+            each_matmul(unstruct_fact(sCr,L)*SigWs[0][:,:,None],Crmsubb) + SigHs[0][:,None]
+        Sigs[1] = Sigs[0] + each_matmul(struct_fact(sa,sWCr,sCr,L)*SigWs[1][:,:,None],Crmsubb) +\
             (SigHs[1]-SigHs[0])[:,None]
-        Sigs[2] = Sigs[0] + each_matmul(struct_fact(0,sWCr,sCr,L)*SigWs[1][:,:,None],Crpmb) +\
+        Sigs[2] = Sigs[0] + each_matmul(struct_fact(0,sWCr,sCr,L)*SigWs[1][:,:,None],Crmsubb) +\
             (SigHs[2]-SigHs[0])[:,None]
-        Sigs[0] = Sigs[0] + each_matmul(struct_fact(L/2,sWCr,sCr,L)*SigWs[1][:,:,None],Crpmb)
+        Sigs[0] = Sigs[0] + each_matmul(struct_fact(L/2,sWCr,sCr,L)*SigWs[1][:,:,None],Crmsubb)
         
     def Sigd_fn(Cdrsi,SigWs,Sigdsi):
         '''
         Cdrbi = Cdrsi[0]
         Cdrai = Cdrsi[1]
-        Cdrpi = Cdrsi[2]
+        Cdrmi = Cdrsi[2]
         
         SigWb = SigWs[0]
         SigW = SigWs[1]
@@ -1349,18 +1980,87 @@ def diff_sparse_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,C
         '''
         sCdri = solve_width((Cdrsi[1]-Cdrsi[0])/(Cdrsi[2]-Cdrsi[0]))
         sWCdri = np.sqrt(sW2+sCdri**2)
-        Cdrpmbi = Cdrsi[2] - Cdrsi[0]
-        Sigdsi[0] = (SigWs[1]+SigWs[0])@Cdrsi[0] + (unstruct_fact(sCdri,L)*SigWs[0])@Cdrpmbi
-        Sigdsi[1] = Sigdsi[0] + (struct_fact(sa,sWCdri,sCdri,L)*SigWs[1])@Cdrpmbi
-        Sigdsi[2] = Sigdsi[0] + (struct_fact(0,sWCdri,sCdri,L)*SigWs[1])@Cdrpmbi
-        Sigdsi[0] = Sigdsi[0] + (struct_fact(L/2,sWCdri,sCdri,L)*SigWs[1])@Cdrpmbi
+        Cdrmsubbi = Cdrsi[2] - Cdrsi[0]
+        Sigdsi[0] = (SigWs[1]+SigWs[0])@Cdrsi[0] + (unstruct_fact(sCdri,L)*SigWs[0])@Cdrmsubbi
+        Sigdsi[1] = Sigdsi[0] + (struct_fact(sa,sWCdri,sCdri,L)*SigWs[1])@Cdrmsubbi
+        Sigdsi[2] = Sigdsi[0] + (struct_fact(0,sWCdri,sCdri,L)*SigWs[1])@Cdrmsubbi
+        Sigdsi[0] = Sigdsi[0] + (struct_fact(L/2,sWCdri,sCdri,L)*SigWs[1])@Cdrmsubbi
         
     Cdrs,convs = diff_gauss_struct_dmft(tau,muWs,SigWs,muHs,SigHs,R_fn,mu_fn,Sig_fn,Sigd_fn,Twrm,Tsav,dt,rs,Crs,Cdrs0)
     
     return Cdrs[0],Cdrs[1],Cdrs[2],convs[0],convs[1],convs[2]
 
-def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rp,Crb,Cra,Crp,
-                                Cdrb0=None,Cdra0=None,Cdrp0=None,Kb=None,dori=45,L=180):
+def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hm,CVH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,ra,rm,Crb,Cra,Crm,
+                                Cdrb0=None,Cdra0=None,Cdrm0=None,Kb=None,dori=45,L=180):
+    '''
+    Solve for stationary rate change autocorrelation given the rate moments without and with a perturbation in a sparse ring network driven by two equal contrast visual stimuli assuming baseline-plus-identical-Gaussian-mixture rate moments by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    W : array_like
+        2D Array of synaptic efficacies per connection type.
+    K : float or array_like
+        The structured mean out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type.
+    Hb : array_like
+        1D Array of baseline mean external input per cell type.
+    Hm : array_like
+        1D Array of matched mean external input per cell type.
+    CVH : float or array_like
+        The coefficient of variation of the external inputs. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the CV of the input per cell type.
+    sW : float or array_like
+        The connection probability width. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the connection probability width per presynaptic cell type. If a 2D array then the elements should list the connection probability width per connection type.
+    sH : float or array_like
+        The external input width. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the external input width per cell type.
+    R_fn : function
+        Function to compute the cross-correlation of the rates without and with the perturbation. It should take as input the 1D arrays of the unperturbed and perturbed means, variances, and the unperturbed-perturbed covariance of the net inputs, and a 1D array to where the computed cross-correlation of the rates will be stored.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    rb : array_like
+        1D Doubled array of the stationary baseline mean rates without and with the perturbation (shape: (2*Ntyp,)).
+    ra : array_like
+        1D Doubled array of the stationary auxiliary mean rates without and with the perturbation (shape: (2*Ntyp,)).
+    rm : array_like
+        1D Doubled array of the stationary matched mean rates without and with the perturbation (shape: (2*Ntyp,)).
+    Crb : array_like
+        2D Doubled array of the stationary baseline rate autocorrelations without and with the perturbation (shape: (2*Ntyp,Nsav)).
+    Cra : array_like
+        2D Doubled array of the stationary auxiliary rate autocorrelations without and with the perturbation (shape: (2*Ntyp,Nsav)).
+    Crm : array_like
+        2D Doubled array of the stationary matched rate autocorrelations without and with the perturbation (shape: (2*Ntyp,Nsav)).
+    Cdrb0 : array_like, optional
+        Initial condition for the baseline rate change autocorrelation function. If None, defaults to 1e3 plus the squared difference of the baseline mean rates.
+    Cdra0 : array_like, optional
+        Initial condition for the auxiliary rate change autocorrelation function. If None, defaults to 2e3 plus the squared difference of the auxiliary mean rates.
+    Cdrm0 : array_like, optional
+        Initial condition for the matched rate change autocorrelation function. If None, defaults to 5e3 plus the squared difference of the matched mean rates.
+    Kb : float or array_like, optional
+        The mean unstructured out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type. If None, defaults to K.
+    dori : int, optional
+        The offset between the two identical wrapped Gaussian kernel centers. Default is 45.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+        
+    Returns
+    -------
+    array_like
+        3D Array of the baseline rate change autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        3D Array of the auxiliary rate change autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        3D Array of the matched rate change autocorrelation function over time (shape: (Ntyp,Nint,Nint)).
+    array_like
+        1D Boolean array indicating whether the corresponding baseline population converged.
+    array_like
+        1D Boolean array indicating whether the corresponding auxiliary population converged.
+    array_like
+        1D Boolean array indicating whether the corresponding matched population converged.
+    '''
     if Kb is None:
         Kb = np.zeros_like(K)
         
@@ -1371,8 +2071,8 @@ def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,r
         Cdrb0 = (rb[Ntyp:] - rb[:Ntyp]).astype(np.float32)[:,None]**2 + 1e3
     if Cdra0 is None:
         Cdra0 = (ra[Ntyp:] - ra[:Ntyp]).astype(np.float32)[:,None]**2 + 2e3
-    if Cdrp0 is None:
-        Cdrp0 = (rp[Ntyp:] - rp[:Ntyp]).astype(np.float32)[:,None]**2 + 5e3
+    if Cdrm0 is None:
+        Cdrm0 = (rm[Ntyp:] - rm[:Ntyp]).astype(np.float32)[:,None]**2 + 5e3
     
     xpeaks = np.array([0,-dori])
     solve_width = get_2feat_solve_width(sa,dori,L)
@@ -1385,32 +2085,32 @@ def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,r
     SigWb = tau[:,None]**2*W**2*Kb
     
     muHb = tau*Hb
-    SigHb = (muHb*eH)**2
-    muHa = tau*(Hb+(Hp-Hb)*(basesubwrapnorm(sa,sH,L)+basesubwrapnorm(dori+sa,sH,L)))
-    SigHa = (muHa*eH)**2
-    muHp = tau*(Hp+(Hp-Hb)*basesubwrapnorm(dori,sH,L))
-    SigHp = (muHp*eH)**2
+    SigHb = (muHb*CVH)**2
+    muHa = tau*(Hb+(Hm-Hb)*(basesubwrapnorm(sa,sH,L)+basesubwrapnorm(dori+sa,sH,L)))
+    SigHa = (muHa*CVH)**2
+    muHm = tau*(Hm+(Hm-Hb)*basesubwrapnorm(dori,sH,L))
+    SigHm = (muHm*CVH)**2
     
     muWs = np.concatenate([muWb[None,:,:],muW[None,:,:]],0)
     SigWs = np.concatenate([SigWb[None,:,:],SigW[None,:,:]],0)
-    muHs = np.concatenate([muHb[None,:],muHa[None,:],muHp[None,:]],0)
-    SigHs = np.concatenate([SigHb[None,:],SigHa[None,:],SigHp[None,:]],0)
-    rs = np.concatenate([rb[None,:],ra[None,:],rp[None,:]],0)
-    Crs = np.concatenate([Crb[None,:,:],Cra[None,:,:],Crp[None,:,:]],0)
-    Cdrs0 = np.concatenate([Cdrb0[None,:,:],Cdra0[None,:,:],Cdrp0[None,:,:]],0)
+    muHs = np.concatenate([muHb[None,:],muHa[None,:],muHm[None,:]],0)
+    SigHs = np.concatenate([SigHb[None,:],SigHa[None,:],SigHm[None,:]],0)
+    rs = np.concatenate([rb[None,:],ra[None,:],rm[None,:]],0)
+    Crs = np.concatenate([Crb[None,:,:],Cra[None,:,:],Crm[None,:,:]],0)
+    Cdrs0 = np.concatenate([Cdrb0[None,:,:],Cdra0[None,:,:],Cdrm0[None,:,:]],0)
     
     def mu_fn(rs,muWs,muHs,mus):
         '''
         rb = rs[0]
         ra = rs[1]
-        rp = rs[2]
+        rm = rs[2]
         
         muWb = muWs[0]
         muW = muWs[1]
         
         muHb = muHs[0]
         muHa = muHs[1]
-        muHp = muHs[2]
+        muHm = muHs[2]
         
         mub = mus[0]
         mua = mus[1]
@@ -1419,25 +2119,25 @@ def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,r
         sr = solve_width((rs[1]-rs[0])/(rs[2]-rs[0]))
         rOinv = np.sum(inv_overlap(xpeaks,sr[:,None])[:,:,0],-1)
         sWr = np.sqrt(doub_mat(sW2)+sr**2)
-        rpmb = (rs[2] - rs[0])*rOinv
-        mus[0] = (muWs[1]+muWs[0])@rs[0] + (unstruct_fact(sr,L)*muWs[0])@rpmb + muHs[0]
-        mus[1] = mus[0] + ((struct_fact(sa,sWr,sr,L)+struct_fact(sa+dori,sWr,sr,L))*muWs[1])@rpmb +\
+        rmsubb = (rs[2] - rs[0])*rOinv
+        mus[0] = (muWs[1]+muWs[0])@rs[0] + (unstruct_fact(sr,L)*muWs[0])@rmsubb + muHs[0]
+        mus[1] = mus[0] + ((struct_fact(sa,sWr,sr,L)+struct_fact(sa+dori,sWr,sr,L))*muWs[1])@rmsubb +\
             muHs[1]-muHs[0]
-        mus[2] = mus[0] + ((struct_fact(0,sWr,sr,L)+struct_fact(dori,sWr,sr,L))*muWs[1])@rpmb + muHs[2]-muHs[0]
-        mus[0] = mus[0] + (2*struct_fact(L/2,sWr,sr,L)*muWs[1])@rpmb
+        mus[2] = mus[0] + ((struct_fact(0,sWr,sr,L)+struct_fact(dori,sWr,sr,L))*muWs[1])@rmsubb + muHs[2]-muHs[0]
+        mus[0] = mus[0] + (2*struct_fact(L/2,sWr,sr,L)*muWs[1])@rmsubb
         
     def Sig_fn(Crs,SigWs,SigHs,Sigs):
         '''
         Crbi = Crs[0]
         Crai = Crs[1]
-        Crpi = Crs[2]
+        Crmi = Crs[2]
         
         SigWb = SigWs[0]
         SigW = SigWs[1]
         
         SigHb = SigHs[0]
         SigHa = SigHs[1]
-        SigHp = SigHs[2]
+        SigHm = SigHs[2]
         
         Sigbi = Sigs[0]
         Sigai = Sigs[1]
@@ -1446,20 +2146,20 @@ def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,r
         sCr = solve_width((Crs[1]-Crs[0])/(Crs[2]-Crs[0]))
         CrOinv = np.sum(inv_overlap(xpeaks,sCr.flatten()[:,None])[:,:,0],-1).reshape(-1,Nsav)
         sWCr = np.sqrt(doub_mat(sW2)[:,:,None]+sCr[None,:,:]**2)
-        Crpmb = (Crs[2] - Crs[0])*CrOinv
+        Crmsubb = (Crs[2] - Crs[0])*CrOinv
         Sigs[0] = each_matmul((SigWs[1]+SigWs[0])[:,:,None],Crs[0]) +\
-            each_matmul(unstruct_fact(sCr,L)*SigWs[0][:,:,None],Crpmb) + SigHs[0][:,None]
+            each_matmul(unstruct_fact(sCr,L)*SigWs[0][:,:,None],Crmsubb) + SigHs[0][:,None]
         Sigs[1] = Sigs[0] + each_matmul((struct_fact(sa,sWCr,sCr,L)+\
-            struct_fact(sa+dori,sWCr,sCr,L))*SigWs[1][:,:,None],Crpmb) + (SigHs[1]-SigHs[0])[:,None]
+            struct_fact(sa+dori,sWCr,sCr,L))*SigWs[1][:,:,None],Crmsubb) + (SigHs[1]-SigHs[0])[:,None]
         Sigs[2] = Sigs[0] + each_matmul((struct_fact(0,sWCr,sCr,L)+\
-            struct_fact(dori,sWCr,sCr,L))*SigWs[1][:,:,None],Crpmb) + (SigHs[2]-SigHs[0])[:,None]
-        Sigs[0] = Sigs[0] + each_matmul(2*struct_fact(L/2,sWCr,sCr,L)*SigWs[1][:,:,None],Crpmb)
+            struct_fact(dori,sWCr,sCr,L))*SigWs[1][:,:,None],Crmsubb) + (SigHs[2]-SigHs[0])[:,None]
+        Sigs[0] = Sigs[0] + each_matmul(2*struct_fact(L/2,sWCr,sCr,L)*SigWs[1][:,:,None],Crmsubb)
         
     def Sigd_fn(Cdrsi,SigWs,Sigdsi):
         '''
         Cdrbi = Cdrsi[0]
         Cdrai = Cdrsi[1]
-        Cdrpi = Cdrsi[2]
+        Cdrmi = Cdrsi[2]
         
         SigWb = SigWs[0]
         SigW = SigWs[1]
@@ -1471,20 +2171,71 @@ def diff_sparse_2feat_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,sa,R_fn,Twrm,Tsav,dt,rb,r
         sCdri = solve_width((Cdrsi[1]-Cdrsi[0])/(Cdrsi[2]-Cdrsi[0]))
         CdrOinv = np.sum(inv_overlap(xpeaks,sCdri[:,None])[:,:,0],-1)
         sWCdri = np.sqrt(sW2+sCdri**2)
-        Cdrpmbi = (Cdrsi[2] - Cdrsi[0])*CdrOinv
-        Sigdsi[0] = (SigWs[1]+SigWs[0])@Cdrsi[0] + (unstruct_fact(sCdri,L)* SigWs[0])@Cdrpmbi
+        Cdrmsubbi = (Cdrsi[2] - Cdrsi[0])*CdrOinv
+        Sigdsi[0] = (SigWs[1]+SigWs[0])@Cdrsi[0] + (unstruct_fact(sCdri,L)* SigWs[0])@Cdrmsubbi
         Sigdsi[1] = Sigdsi[0] + ((struct_fact(sa,sWCdri,sCdri,L)+\
-            struct_fact(sa+dori,sWCdri,sCdri,L))*SigWs[1])@Cdrpmbi
+            struct_fact(sa+dori,sWCdri,sCdri,L))*SigWs[1])@Cdrmsubbi
         Sigdsi[2] = Sigdsi[0] + ((struct_fact(0,sWCdri,sCdri,L)+\
-            struct_fact(dori,sWCdri,sCdri,L))*SigWs[1])@Cdrpmbi
-        Sigdsi[0] = Sigdsi[0] + (2*struct_fact(L/2,sWCdri,sCdri,L)*SigWs[1])@Cdrpmbi
+            struct_fact(dori,sWCdri,sCdri,L))*SigWs[1])@Cdrmsubbi
+        Sigdsi[0] = Sigdsi[0] + (2*struct_fact(L/2,sWCdri,sCdri,L)*SigWs[1])@Cdrmsubbi
         
     Cdrs,convs = diff_gauss_struct_dmft(tau,muWs,SigWs,muHs,SigHs,R_fn,mu_fn,Sig_fn,Sigd_fn,Twrm,Tsav,dt,rs,Crs,Cdrs0)
     
     return Cdrs[0],Cdrs[1],Cdrs[2],convs[0],convs[1],convs[2]
 
-def sparse_full_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,M_fn,C_fn,Twrm,Tsav,dt,
+def sparse_full_ring_dmft(tau,W,K,Hb,Hm,CVH,sW,sH,M_fn,C_fn,Twrm,Tsav,dt,
                           rs0=None,Crs0=None,Kb=None,L=180,Nori=20):
+    '''
+    Solve for stationary three-site rate moments in a sparse discrete ring network by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    W : array_like
+        2D Array of synaptic efficacies per connection type.
+    K : float or array_like
+        The structured mean out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type.
+    Hb : array_like
+        1D Array of baseline mean external input per cell type.
+    Hm : array_like
+        1D Array of matched mean external input per cell type.
+    CVH : float or array_like
+        The coefficient of variation of the external inputs. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the CV of the input per cell type.
+    sW : float or array_like
+        The connection probability width. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the connection probability width per presynaptic cell type. If a 2D array then the elements should list the connection probability width per connection type.
+    sH : float or array_like
+        The external input width. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the external input width per cell type.
+    M_fn : function
+        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input, and a 1D array to where the computed mean rates will be stored.
+    C_fn : function
+        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs, and a 1D array to where the computed autocorrelation of the rates will be stored.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    rs0 : array_like, optional
+        Initial condition for the mean rates. Should be a 2D array of shape (Nori,Ntyp). If None, defaults to 1+4*basesubwrapnorm(oris,15) for all cell types.
+    Crs0 : array_like, optional
+        Initial condition for the autocorrelation function. Should be a 3D array of shape (Nori,Ntyp,...). If None, defaults to 1e2+24e2*basesubwrapnorm(oris,15) for all cell types for all time lags.
+    Kb : float or array_like, optional
+        The mean unstructured out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type. If None, defaults to K.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+    Nori : int, optional
+        Number of discrete orientation sites. Default is 20.
+        
+    Returns
+    -------
+    array_like
+        3D Array of the mean rates over time (shape: (Nori,Ntyp,Nint)).
+    array_like
+        4D Array of the autocorrelation function over time (shape: (Nori,Ntyp,Nint,Nint)).
+    array_like
+        2D Boolean array indicating whether the corresponding population converged.
+    '''
     if Kb is None:
         Kb = np.zeros_like(K)
         
@@ -1508,8 +2259,8 @@ def sparse_full_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,M_fn,C_fn,Twrm,Tsav,dt,
     muWs = (muWb[None,:,None,:] + muW[None,:,None,:]*2*np.pi*kerns) / Nori
     SigWs = (SigWb[None,:,None,:] + SigW[None,:,None,:]*2*np.pi*kerns) / Nori
     
-    muHs = tau*(Hb[None,:]+(Hp-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:],L))
-    SigHs = (muHs*eH)**2
+    muHs = tau*(Hb[None,:]+(Hm-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:],L))
+    SigHs = (muHs*CVH)**2
     
     def mu_fn(rsi,muWs,muHs,musi):
         musi[:] = np.einsum("ijkl,kl->ij",muWs,rsi) + muHs
@@ -1519,8 +2270,59 @@ def sparse_full_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,M_fn,C_fn,Twrm,Tsav,dt,
                 
     return gauss_struct_dmft(tau,muWs,SigWs,muHs,SigHs,M_fn,C_fn,mu_fn,Sig_fn,Twrm,Tsav,dt,rs0,Crs0)
 
-def doub_sparse_full_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,M_fns,C_fns,Twrm,Tsav,dt,
+def doub_sparse_full_ring_dmft(tau,W,K,Hb,Hm,CVH,sW,sH,M_fns,C_fns,Twrm,Tsav,dt,
                                rs0=None,Crs0=None,Kb=None,L=180,Nori=20):
+    '''
+    Solve for stationary three-site rate moments simultaneously without and with a perturbation in a sparse discrete ring network by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    W : array_like
+        2D Array of synaptic efficacies per connection type.
+    K : float or array_like
+        The structured mean out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type.
+    Hb : array_like
+        1D Array of baseline mean external input per cell type.
+    Hm : array_like
+        1D Array of matched mean external input per cell type.
+    CVH : float or array_like
+        The coefficient of variation of the external inputs. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the CV of the input per cell type.
+    sW : float or array_like
+        The connection probability width. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the connection probability width per presynaptic cell type. If a 2D array then the elements should list the connection probability width per connection type.
+    sH : float or array_like
+        The external input width. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the external input width per cell type.
+    M_fn : function
+        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input, and a 1D array to where the computed mean rates will be stored.
+    C_fn : function
+        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs, and a 1D array to where the computed autocorrelation of the rates will be stored.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    rs0 : array_like, optional
+        Initial condition for the mean rates. Should be a 2D array of shape (Nori,Ntyp). If None, defaults to 1+4*basesubwrapnorm(oris,15) for all cell types.
+    Crs0 : array_like, optional
+        Initial condition for the autocorrelation function. Should be a 3D array of shape (Nori,Ntyp,...). If None, defaults to 1e2+24e2*basesubwrapnorm(oris,15) for all cell types for all time lags.
+    Kb : float or array_like, optional
+        The mean unstructured out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type. If None, defaults to K.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+    Nori : int, optional
+        Number of discrete orientation sites. Default is 20.
+        
+    Returns
+    -------
+    array_like
+        3D Array of the mean rates over time (shape: (Nori,2*Ntyp,Nint)).
+    array_like
+        4D Array of the autocorrelation function over time (shape: (Nori,2*Ntyp,Nint,Nint)).
+    array_like
+        2D Boolean array indicating whether the corresponding population converged.
+    '''
     if Kb is None:
         doub_Kb = None
     else:
@@ -1532,7 +2334,7 @@ def doub_sparse_full_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,M_fns,C_fns,Twrm,Tsav,dt,
     doub_W = doub_mat(W)
     doub_K = doub_vec(K)
     doub_Hb = doub_vec(Hb)
-    doub_Hp = doub_vec(Hp)
+    doub_Hm = doub_vec(Hm)
     doub_sW = np.block([[sW,sW],[sW,sW]])
     doub_sH = doub_vec(sH)
     
@@ -1544,11 +2346,58 @@ def doub_sparse_full_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,M_fns,C_fns,Twrm,Tsav,dt,
         C_fns[0](mui[:Ntyp],Sigii[:Ntyp],Sigij[:Ntyp],out[:Ntyp])
         C_fns[1](mui[Ntyp:],Sigii[Ntyp:],Sigij[Ntyp:],out[Ntyp:])
         
-    return sparse_full_ring_dmft(doub_tau,doub_W,doub_K,doub_Hb,doub_Hp,eH,doub_sW,doub_sH,doub_M,doub_C,Twrm,Tsav,dt,
+    return sparse_full_ring_dmft(doub_tau,doub_W,doub_K,doub_Hb,doub_Hm,CVH,doub_sW,doub_sH,doub_M,doub_C,Twrm,Tsav,dt,
                                  rs0,Crs0,Kb=doub_Kb,L=L,Nori=Nori)
 
-def diff_sparse_full_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,R_fn,Twrm,Tsav,dt,rs,Crs,
+def diff_sparse_full_ring_dmft(tau,W,K,Hb,Hm,CVH,sW,sH,R_fn,Twrm,Tsav,dt,rs,Crs,
                                Cdrs0=None,Kb=None,L=180,Nori=20):
+    '''
+    Solve for stationary rate change autocorrelation given the rate moments without and with a perturbation in a sparse discrete ring network by evolving the system in time using the DMFT equations.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    W : array_like
+        2D Array of synaptic efficacies per connection type.
+    K : float or array_like
+        The structured mean out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type.
+    Hb : array_like
+        1D Array of baseline mean external input per cell type.
+    Hm : array_like
+        1D Array of matched mean external input per cell type.
+    CVH : float or array_like
+        The coefficient of variation of the external inputs. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the CV of the input per cell type.
+    sW : float or array_like
+        The connection probability width. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the connection probability width per presynaptic cell type. If a 2D array then the elements should list the connection probability width per connection type.
+    sH : float or array_like
+        The external input width. If a scalar, then it is assumed to be the value for all cell types. If a 1D array then the elements should list the external input width per cell type.
+    R_fn : function
+        Function to compute the cross-correlation of the rates without and with the perturbation. It should take as input the 1D arrays of the unperturbed and perturbed means, variances, and the unperturbed-perturbed covariance of the net inputs, and a 1D array to where the computed cross-correlation of the rates will be stored.
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    rs : array_like
+        2D Doubled array of the stationary mean rates without and with the perturbation (shape: (Nori,2*Ntyp)).
+    Crs : array_like
+        3D Doubled array of the stationary rate autocorrelations without and with the perturbation (shape: (Nori,2*Ntyp,Nsav)).
+    Cdrs0 : array_like, optional
+        Initial condition for the rate change autocorrelation function. Should be a 3D array of shape (Nori,Ntyp,...). If None, defaults to 1e3+4e3*basesubwrapnorm(oris,15) plus the squared difference of the mean rates.
+    Kb : float or array_like, optional
+        The mean unstructured out-degree. If a scalar, then it is assumed to be the value for all connection types. If a 1D array then the elements should list the mean out-degree per presynaptic cell type. If a 2D array then the elements should list the mean out-degree per connection type. If None, defaults to K.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+        
+    Returns
+    -------
+    array_like
+        4D Array of the rate change autocorrelation function over time (shape: (Nori,Ntyp,Nint,Nint)).
+    array_like
+        2D Boolean array indicating whether the corresponding population converged.
+    '''
     if Kb is None:
         Kb = np.zeros_like(K)
         
@@ -1571,8 +2420,8 @@ def diff_sparse_full_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,R_fn,Twrm,Tsav,dt,rs,Crs,
     muWs = (muWb[None,:,None,:] + muW[None,:,None,:]*2*np.pi*kerns) / Nori
     SigWs = (SigWb[None,:,None,:] + SigW[None,:,None,:]*2*np.pi*kerns) / Nori
     
-    muHs = tau*(Hb[None,:]+(Hp-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:],L))
-    SigHs = (muHs*eH)**2
+    muHs = tau*(Hb[None,:]+(Hm-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:],L))
+    SigHs = (muHs*CVH)**2
     
     def mu_fn(rsi,muWs,muHs,musi):
         musi[:] = np.einsum("ijkl,kl->ij",muWs,rsi) + muHs
@@ -1584,161 +2433,6 @@ def diff_sparse_full_ring_dmft(tau,W,K,Hb,Hp,eH,sW,sH,R_fn,Twrm,Tsav,dt,rs,Crs,
         Sigdsi[:] = np.einsum("ijkl,kl->ij",SigWs,Cdrsi)
     
     return diff_gauss_struct_dmft(tau,muWs,SigWs,muHs,SigHs,R_fn,mu_fn,Sig_fn,Sigd_fn,Twrm,Tsav,dt,rs,Crs,Cdrs0)
-
-def run_first_stage_dmft(prms,rX,CVh,res_dir,rc,Twrm,Tsav,dt,which="both",return_full=False):
-    Nsav = round(Tsav/dt)+1
-    
-    K = prms["K"]
-    J = prms["J"]
-    beta = prms["beta"]
-    gE = prms["gE"]
-    gI = prms["gI"]
-    hE = prms["hE"]
-    hI = prms["hI"]
-    
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
-    W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
-    Ks = np.array([K,K/4],dtype=np.float32)
-    H = rX*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
-    
-    muH = tau*H
-    SigH = (muH*eH)**2
-    
-    FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
-    FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
-    
-    def base_M(mui,Sigii,out):
-        out[0] = ME(mui[0],Sigii[0])[0]
-        out[1] = MI(mui[1],Sigii[1])[0]
-        
-    def base_C(mui,Sigii,Sigij,out):
-        out[0] = CE(mui[0],Sigii[0],Sigij[0])[0]
-        out[1] = CI(mui[1],Sigii[1],Sigij[1])[0]
-    
-    def opto_M(mui,Sigii,out):
-        out[0] = ML(mui[0],Sigii[0])[0]
-        out[1] = MI(mui[1],Sigii[1])[0]
-        
-    def opto_C(mui,Sigii,Sigij,out):
-        out[0] = CL(mui[0],Sigii[0],Sigij[0])[0]
-        out[1] = CI(mui[1],Sigii[1],Sigij[1])[0]
-    
-    start = time.process_time()
-    
-    if which=="base":
-        full_r,full_Cr,conv = sparse_dmft(tau,W,Ks,H,eH,base_M,base_C,Twrm,Tsav,dt)
-    elif which=="opto":
-        full_r,full_Cr,conv = sparse_dmft(tau,W,Ks,H,eH,opto_M,opto_C,Twrm,Tsav,dt)
-    elif which=="both":
-        full_r,full_Cr,conv = doub_sparse_dmft(tau,W,Ks,H,eH,[base_M,opto_M],[base_C,opto_C],Twrm,Tsav,dt)
-    else:
-        raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
-        
-    print("integrating first stage took",time.process_time() - start,"s")
-
-    # extract predicted moments after long time evolution
-    r = full_r[:,-1]
-    Cr = full_Cr[:,-1,-1:-Nsav-1:-1]
-    
-    muW = tau[:,None]*W*Ks
-    SigW = tau[:,None]**2*W**2*Ks
-    
-    if which in ("base","opto"):
-        mu = muW@r + muH
-        Sig = SigW@Cr + SigH[:,None]
-    elif which=="both":
-        doub_muW = doub_mat(muW)
-        doub_SigW = doub_mat(SigW)
-
-        mu = doub_muW@r + doub_vec(muH)
-        Sig = doub_SigW@Cr + doub_vec(SigH)[:,None]
-    else:
-        raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
-    
-    res_dict = {}
-    
-    res_dict["r"] = r
-    res_dict["Cr"] = Cr
-    
-    res_dict["mu"] = mu
-    res_dict["Sig"] = Sig
-    
-    res_dict["conv"] = conv
-    
-    if return_full:
-        res_dict["full_r"] = full_r
-        res_dict["full_Cr"] = full_Cr
-    
-    return res_dict
-
-def run_second_stage_dmft(first_res_dict,prms,rX,CVh,res_dir,rc,Twrm,Tsav,dt,return_full=False):
-    Nsav = round(Tsav/dt)+1
-    
-    K = prms["K"]
-    J = prms["J"]
-    beta = prms["beta"]
-    gE = prms["gE"]
-    gI = prms["gI"]
-    hE = prms["hE"]
-    hI = prms["hI"]
-    
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
-    W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
-    Ks = np.array([K,K/4],dtype=np.float32)
-    H = rX*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
-    
-    muH = tau*H
-    SigH = (muH*eH)**2
-    
-    FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
-    FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
-
-    def diff_R(mu1i,mu2i,Sig1ii,Sig2ii,kij,out):
-        out[0] = R_simp(ME,ML,mu1i[0],mu2i[0],Sig1ii[0],Sig2ii[0],kij[0])
-        out[1] = R_simp(MI,MI,mu1i[1],mu2i[1],Sig1ii[1],Sig2ii[1],kij[1])
-
-    r = first_res_dict["r"]
-    Cr = first_res_dict["Cr"]
-    
-    muW = tau[:,None]*W*Ks
-    SigW = tau[:,None]**2*W**2*Ks
-    
-    doub_muW = doub_mat(muW)
-    doub_SigW = doub_mat(SigW)
-    
-    mu = doub_muW@r + doub_vec(muH)
-    Sig = doub_SigW@Cr + doub_vec(SigH)[:,None]
-
-    start = time.process_time()
-
-    full_Cdr,convd = diff_sparse_dmft(tau,W,Ks,H,eH,diff_R,Twrm,Tsav,dt,r,Cr)
-
-    print("integrating second stage took",time.process_time() - start,"s")
-
-    # extract predicted moments after long time evolution
-    dr = r[:2] - r[2:]
-    Cdr = full_Cdr[:,-1,-1:-Nsav-1:-1]
-
-    dmu = mu[:2] - mu[2:]
-
-    Sigd = SigW@Cdr
-    
-    res_dict = {}
-    
-    res_dict["dr"] = dr
-    res_dict["Cdr"] = Cdr
-    
-    res_dict["dmu"] = dmu
-    res_dict["Sigd"] = Sigd
-
-    res_dict["convd"] = convd
-    
-    if return_full:
-        res_dict["full_Cdr"] = full_Cdr
-    
-    return res_dict
 
 def run_two_stage_dmft(prms,rX,CVh,res_dir,rc,Twrm,Tsav,dt,return_full=False):
     Nsav = round(Tsav/dt)+1
@@ -1755,10 +2449,10 @@ def run_two_stage_dmft(prms,rX,CVh,res_dir,rc,Twrm,Tsav,dt,return_full=False):
     W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
     Ks = np.array([K,K/4],dtype=np.float32)
     H = rX*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
+    CVH = CVh
     
     muH = tau*H
-    SigH = (muH*eH)**2
+    SigH = (muH*CVH)**2
     
     FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
     FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
@@ -1785,7 +2479,7 @@ def run_two_stage_dmft(prms,rX,CVh,res_dir,rc,Twrm,Tsav,dt,return_full=False):
     
     start = time.process_time()
     
-    full_r,full_Cr,conv = doub_sparse_dmft(tau,W,Ks,H,eH,[base_M,opto_M],[base_C,opto_C],Twrm,Tsav,dt)
+    full_r,full_Cr,conv = doub_sparse_dmft(tau,W,Ks,H,CVH,[base_M,opto_M],[base_C,opto_C],Twrm,Tsav,dt)
 
     print("integrating first stage took",time.process_time() - start,"s")
 
@@ -1804,7 +2498,7 @@ def run_two_stage_dmft(prms,rX,CVh,res_dir,rc,Twrm,Tsav,dt,return_full=False):
 
     start = time.process_time()
 
-    full_Cdr,convd = diff_sparse_dmft(tau,W,Ks,H,eH,diff_R,Twrm,Tsav,dt,r,Cr)
+    full_Cdr,convd = diff_sparse_dmft(tau,W,Ks,H,CVH,diff_R,Twrm,Tsav,dt,r,Cr)
 
     print("integrating second stage took",time.process_time() - start,"s")
 
@@ -1835,163 +2529,6 @@ def run_two_stage_dmft(prms,rX,CVh,res_dir,rc,Twrm,Tsav,dt,return_full=False):
         res_dict["full_r"] = full_r
         res_dict["full_Cr"] = full_Cr
         res_dict["full_Cdr"] = full_Cdr
-    
-    return res_dict
-
-def run_first_stage_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,L=180,which="both",return_full=False):    
-    Nsav = round(Tsav/dt)+1
-    
-    K = prms["K"]
-    SoriE = prms["SoriE"]
-    SoriI = prms["SoriI"]
-    SoriF = prms["SoriF"]
-    J = prms["J"]
-    beta = prms["beta"]
-    gE = prms["gE"]
-    gI = prms["gI"]
-    hE = prms["hE"]
-    hI = prms["hI"]
-    basefrac = prms.get("basefrac",0)
-    baseinp = prms.get("baseinp",0)
-    baseprob = prms.get("baseprob",0)
-    
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
-    W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
-    Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
-    Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
-    Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
-    sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
-    sH = np.array([SoriF,SoriF],dtype=np.float32)
-    
-    sW2 = sW**2
-    
-    solve_width = get_solve_width(sa,L)
-    
-    muHb = tau*Hb
-    SigHb = (muHb*eH)**2
-    muHa = tau*(Hb+(Hp-Hb)*basesubwrapnorm(sa,sH,L))
-    SigHa = (muHa*eH)**2
-    muHp = tau*Hp
-    SigHp = (muHp*eH)**2
-    
-    FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
-    FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
-    
-    def base_M(mui,Sigii,out):
-        out[0] = ME(mui[0],Sigii[0])[0]
-        out[1] = MI(mui[1],Sigii[1])[0]
-        
-    def base_C(mui,Sigii,Sigij,out):
-        out[0] = CE(mui[0],Sigii[0],Sigij[0])[0]
-        out[1] = CI(mui[1],Sigii[1],Sigij[1])[0]
-    
-    def opto_M(mui,Sigii,out):
-        out[0] = ML(mui[0],Sigii[0])[0]
-        out[1] = MI(mui[1],Sigii[1])[0]
-        
-    def opto_C(mui,Sigii,Sigij,out):
-        out[0] = CL(mui[0],Sigii[0],Sigij[0])[0]
-        out[1] = CI(mui[1],Sigii[1],Sigij[1])[0]
-    
-    start = time.process_time()
-    
-    if which=="base":
-        full_rb,full_ra,full_rp,full_Crb,full_Cra,full_Crp,\
-            convb,conva,convp = sparse_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,sa,base_M,base_C,Twrm,Tsav,dt,Kb=Kbs,L=L)
-    elif which=="opto":
-        full_rb,full_ra,full_rp,full_Crb,full_Cra,full_Crp,\
-            convb,conva,convp = sparse_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,sa,opto_M,opto_C,Twrm,Tsav,dt,Kb=Kbs,L=L)
-    elif which=="both":
-        full_rb,full_ra,full_rp,full_Crb,full_Cra,full_Crp,\
-            convb,conva,convp = doub_sparse_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,sa,[base_M,opto_M],[base_C,opto_C],
-                                                      Twrm,Tsav,dt,Kb=Kbs,L=L)
-    else:
-        raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
-        
-    print("integrating first stage took",time.process_time() - start,"s")
-
-    # extract predicted moments after long time evolution
-    rb = full_rb[:,-1]
-    ra = full_ra[:,-1]
-    rp = full_rp[:,-1]
-    Crb = full_Crb[:,-1,-1:-Nsav-1:-1]
-    Cra = full_Cra[:,-1,-1:-Nsav-1:-1]
-    Crp = full_Crp[:,-1,-1:-Nsav-1:-1]
-    
-    muW = tau[:,None]*W*Ks
-    SigW = tau[:,None]**2*W**2*Ks
-    muWb = tau[:,None]*W*Kbs
-    SigWb = tau[:,None]**2*W**2*Kbs
-    
-    sr = solve_width((ra-rb)/(rp-rb))
-    sCr = solve_width((Cra-Crb)/(Crp-Crb))
-    
-    if which in ("base","opto"):
-        sWr = np.sqrt(sW2+sr**2)
-        rpmb = rp-rb
-        sWCr = np.sqrt(sW2[:,:,None]+sCr[None,:,:]**2)
-        Crpmb = Crp-Crb
-        mub = (muW+muWb)@rb + (unstruct_fact(sr,L)*muWb)@rpmb + muHb
-        mua = mub + (struct_fact(sa,sWr,sr,L)*muW)@rpmb + muHa-muHb
-        mup = mub + (struct_fact(0,sWr,sr,L)*muW)@rpmb + muHp-muHb
-        mub = mub + (struct_fact(L/2,sWr,sr,L)*muW)@rpmb
-        Sigb = (SigW+SigWb)@Crb + each_matmul(unstruct_fact(sCr,L)*SigWb[:,:,None],Crpmb) + (SigHb)[:,None]
-        Siga = Sigb + each_matmul(struct_fact(sa,sWCr,sCr,L)*SigW[:,:,None],Crpmb) + (SigHa-SigHb)[:,None]
-        Sigp = Sigb + each_matmul(struct_fact(0,sWCr,sCr,L)*SigW[:,:,None],Crpmb) + (SigHp-SigHb)[:,None]
-        Sigb = Sigb + each_matmul(struct_fact(L/2,sWCr,sCr,L)*SigW[:,:,None],Crpmb)
-    elif which=="both":
-        doub_muW = doub_mat(muW)
-        doub_SigW = doub_mat(SigW)
-        doub_muWb = doub_mat(muWb)
-        doub_SigWb = doub_mat(SigWb)
-        
-        sWr = np.sqrt(doub_mat(sW2)+sr**2)
-        rpmb = rp-rb
-        sWCr = np.sqrt(doub_mat(sW2)[:,:,None]+sCr[None,:,:]**2)
-        Crpmb = Crp-Crb
-        mub = (doub_muW+doub_muWb)@rb + (unstruct_fact(sr,L)*doub_muWb)@rpmb + doub_vec(muHb)
-        mua = mub + (struct_fact(sa,sWr,sr,L)*doub_muW)@rpmb + doub_vec(muHa-muHb)
-        mup = mub + (struct_fact(0,sWr,sr,L)*doub_muW)@rpmb + doub_vec(muHp-muHb)
-        mub = mub + (struct_fact(L/2,sWr,sr,L)*doub_muW)@rpmb
-        Sigb = (doub_SigW+doub_SigWb)@Crb + each_matmul(unstruct_fact(sCr,L)*doub_SigWb[:,:,None],Crpmb) +\
-            doub_vec(SigHb)[:,None]
-        Siga = Sigb + each_matmul(struct_fact(sa,sWCr,sCr,L)*doub_SigW[:,:,None],Crpmb) + doub_vec(SigHa-SigHb)[:,None]
-        Sigp = Sigb + each_matmul(struct_fact(0,sWCr,sCr,L)*doub_SigW[:,:,None],Crpmb) + doub_vec(SigHp-SigHb)[:,None]
-        Sigb = Sigb + each_matmul(struct_fact(L/2,sWCr,sCr,L)*doub_SigW[:,:,None],Crpmb)
-    else:
-        raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
-    
-    res_dict = {}
-    
-    res_dict["rb"] = rb
-    res_dict["ra"] = ra
-    res_dict["rp"] = rp
-    res_dict["sr"] = sr
-    res_dict["Crb"] = Crb
-    res_dict["Cra"] = Cra
-    res_dict["Crp"] = Crp
-    res_dict["sCr"] = sCr
-    
-    res_dict["mub"] = mub
-    res_dict["mua"] = mua
-    res_dict["mup"] = mup
-    res_dict["Sigb"] = Sigb
-    res_dict["Siga"] = Siga
-    res_dict["Sigp"] = Sigp
-    
-    res_dict["convb"] = convb
-    res_dict["conva"] = conva
-    res_dict["convp"] = convp
-    
-    if return_full:
-        res_dict["full_rb"] = full_rb
-        res_dict["full_ra"] = full_ra
-        res_dict["full_rp"] = full_rp
-        res_dict["full_Crb"] = full_Crb
-        res_dict["full_Cra"] = full_Cra
-        res_dict["full_Crp"] = full_Crp
     
     return res_dict
 
@@ -2018,8 +2555,8 @@ def run_decoupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
     Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
     Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
     Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
+    Hm = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
+    CVH = CVh
     sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
     
     sW2 = sW**2
@@ -2045,10 +2582,10 @@ def run_decoupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
     SigWpb = (1 - struct_fact(0,sWCr,sCr,180)) * SigW + (1 - unstruct_fact(sCr,L)) * SigWb
     SigWpp = struct_fact(0,sWCr,sCr,180) * SigW + unstruct_fact(sCr,L) * SigWb
     
-    muHb = tau*Hb + muWbp@struct_dict.get("rp",0)
-    SigHb = ((tau*Hb*eH)**2)[:,None] + SigWbp@struct_dict.get("Crp",0)
-    muHp = tau*Hp + muWpb@struct_dict.get("rb",0)
-    SigHp = ((tau*Hp*eH)**2)[:,None] + SigWpb@struct_dict.get("Crb",0)
+    muHb = tau*Hb + muWbp@struct_dict.get("rm",0)
+    SigHb = ((tau*Hb*CVH)**2)[:,None] + SigWbp@struct_dict.get("Crm",0)
+    muHm = tau*Hm + muWpb@struct_dict.get("rb",0)
+    SigHm = ((tau*Hm*CVH)**2)[:,None] + SigWpb@struct_dict.get("Crb",0)
     
     Norig = SigHb.shape[1]
     if Norig!=Nsav:
@@ -2057,10 +2594,10 @@ def run_decoupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
         SigHb[:,:Norig] = temp
         SigHb[:,Norig:] = temp[:,-1:]
         
-        temp = SigHp.copy()
-        SigHp = np.zeros((2,Nsav))
-        SigHp[:,:Norig] = temp
-        SigHp[:,Norig:] = temp[:,-1:]
+        temp = SigHm.copy()
+        SigHm = np.zeros((2,Nsav))
+        SigHm[:,:Norig] = temp
+        SigHm[:,Norig:] = temp[:,-1:]
     
     FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
     FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
@@ -2085,14 +2622,14 @@ def run_decoupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
     
     if which=="base":
         full_rb,full_Crb,convb = gauss_dmft(tau,muWbb,SigWbb,muHb,SigHb,base_M,base_C,Twrm,Tsav,dt)
-        full_rp,full_Crp,convp = gauss_dmft(tau,muWpp,SigWpp,muHp,SigHp,base_M,base_C,Twrm,Tsav,dt)
+        full_rm,full_Crm,convp = gauss_dmft(tau,muWpp,SigWpp,muHm,SigHm,base_M,base_C,Twrm,Tsav,dt)
     elif which=="opto":
         full_rb,full_Crb,convb = gauss_dmft(tau,muWbb,SigWbb,muHb,SigHb,opto_M,opto_C,Twrm,Tsav,dt)
-        full_rp,full_Crp,convp = gauss_dmft(tau,muWpp,SigWpp,muHp,SigHp,opto_M,opto_C,Twrm,Tsav,dt)
+        full_rm,full_Crm,convp = gauss_dmft(tau,muWpp,SigWpp,muHm,SigHm,opto_M,opto_C,Twrm,Tsav,dt)
     elif which=="both":
         full_rb,full_Crb,convb = doub_gauss_dmft(tau,muWbb,SigWbb,muHb,SigHb,[base_M,opto_M],[base_C,opto_C],
                                                  Twrm,Tsav,dt)
-        full_rp,full_Crp,convp = doub_gauss_dmft(tau,muWpp,SigWpp,muHp,SigHp,[base_M,opto_M],[base_C,opto_C],
+        full_rm,full_Crm,convp = doub_gauss_dmft(tau,muWpp,SigWpp,muHm,SigHm,[base_M,opto_M],[base_C,opto_C],
                                                  Twrm,Tsav,dt)
 
         def diff_R(mu1i,mu2i,Sig1ii,Sig2ii,kij,out):
@@ -2100,9 +2637,9 @@ def run_decoupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
             out[1] = R_simp(MI,MI,mu1i[1],mu2i[1],Sig1ii[1],Sig2ii[1],kij[1])
             
         rb = full_rb[:,-1]
-        rp = full_rp[:,-1]
+        rm = full_rm[:,-1]
         Crb = full_Crb[:,-1,-1:-Nsav-1:-1]
-        Crp = full_Crp[:,-1,-1:-Nsav-1:-1]
+        Crm = full_Crm[:,-1,-1:-Nsav-1:-1]
         
         doub_muWbb = doub_mat(muWbb)
         doub_muWpp = doub_mat(muWpp)
@@ -2110,12 +2647,12 @@ def run_decoupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
         doub_SigWpp = doub_mat(SigWpp)
         
         mub = doub_muWbb@rb + doub_vec(muHb)
-        mup = doub_muWpp@rp + doub_vec(muHp)
+        mup = doub_muWpp@rm + doub_vec(muHm)
         Sigb = doub_SigWbb@Crb + np.concatenate([SigHb,SigHb],axis=0)
-        Sigp = doub_SigWpp@Crp + np.concatenate([SigHp,SigHp],axis=0)
+        Sigp = doub_SigWpp@Crm + np.concatenate([SigHm,SigHm],axis=0)
 
         full_Cdrb,convdb = diff_gauss_dmft(tau,muWbb,SigWbb,muHb,SigHb,diff_R,Twrm,Tsav,dt,rb,Crb)
-        full_Cdrp,convdp = diff_gauss_dmft(tau,muWpp,SigWpp,muHp,SigHp,diff_R,Twrm,Tsav,dt,rp,Crp)
+        full_Cdrm,convdp = diff_gauss_dmft(tau,muWpp,SigWpp,muHm,SigHm,diff_R,Twrm,Tsav,dt,rm,Crm)
     else:
         raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
         
@@ -2124,35 +2661,35 @@ def run_decoupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
     if which in ("base","opto"):
         # extract predicted moments after long time evolution
         rb = full_rb[:,-1]
-        rp = full_rp[:,-1]
+        rm = full_rm[:,-1]
         Crb = full_Crb[:,-1,-1:-Nsav-1:-1]
-        Crp = full_Crp[:,-1,-1:-Nsav-1:-1]
+        Crm = full_Crm[:,-1,-1:-Nsav-1:-1]
         
         mub = muWbb@rb + muHb
         Sigb = SigWbb@Crb + SigHb
-        mup = muWpp@rp + muHp
-        Sigp = SigWpp@Crp + SigHp
+        mup = muWpp@rm + muHm
+        Sigp = SigWpp@Crm + SigHm
     elif which=="both":
         drb = rb[:2] - rb[2:]
-        drp = rp[:2] - rp[2:]
+        drm = rm[:2] - rm[2:]
         Cdrb = full_Cdrb[:,-1,-1:-Nsav-1:-1]
-        Cdrp = full_Cdrp[:,-1,-1:-Nsav-1:-1]
+        Cdrm = full_Cdrm[:,-1,-1:-Nsav-1:-1]
 
         dmub = mub[:2] - mub[2:]
         dmup = mup[:2] - mup[2:]
 
         Sigdb = SigWbb@Cdrb
-        Sigdp = SigWpp@Cdrp
+        Sigdp = SigWpp@Cdrm
     else:
         raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
     
     res_dict = {}
     
     res_dict["rb"] = rb
-    res_dict["rp"] = rp
+    res_dict["rm"] = rm
     res_dict["sr"] = sr
     res_dict["Crb"] = Crb
-    res_dict["Crp"] = Crp
+    res_dict["Crm"] = Crm
     res_dict["sCr"] = sCr
     
     res_dict["mub"] = mub
@@ -2165,9 +2702,9 @@ def run_decoupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
     
     if which=="both":
         res_dict["drb"] = drb
-        res_dict["drp"] = drp
+        res_dict["drm"] = drm
         res_dict["Cdrb"] = Cdrb
-        res_dict["Cdrp"] = Cdrp
+        res_dict["Cdrm"] = Cdrm
         
         res_dict["dmub"] = dmub
         res_dict["dmup"] = dmup
@@ -2179,189 +2716,12 @@ def run_decoupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
     
     if return_full:
         res_dict["full_rb"] = full_rb
-        res_dict["full_rp"] = full_rp
+        res_dict["full_rm"] = full_rm
         res_dict["full_Crb"] = full_Crb
-        res_dict["full_Crp"] = full_Crp
+        res_dict["full_Crm"] = full_Crm
         if which=="both":
             res_dict["full_Cdrb"] = full_Cdrb
-            res_dict["full_Cdrp"] = full_Cdrp
-    
-    return res_dict
-
-def run_coupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
-                                struct_dict=None,which="both",return_full=False):
-    Nsav = round(Tsav/dt)+1
-    
-    K = prms["K"]
-    SoriE = prms["SoriE"]
-    SoriI = prms["SoriI"]
-    SoriF = prms["SoriF"]
-    J = prms["J"]
-    beta = prms["beta"]
-    gE = prms["gE"]
-    gI = prms["gI"]
-    hE = prms["hE"]
-    hI = prms["hI"]
-    basefrac = prms.get("basefrac",0)
-    baseinp = prms.get("baseinp",0)
-    baseprob = prms.get("baseprob",0)
-    
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
-    W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
-    Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
-    Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
-    Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
-    sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
-    
-    sW2 = sW**2
-    
-    muW = tau[:,None]*W*Ks
-    SigW = tau[:,None]**2*W**2*Ks
-    muWb = tau[:,None]*W*Kbs
-    SigWb = tau[:,None]**2*W**2*Kbs
-    
-    sr = struct_dict["sr"]
-    sCr = struct_dict["sCr"][:,-1]
-    
-    sWr = np.sqrt(sW2+sr**2)
-    sWCr = np.sqrt(sW2+sCr**2)
-    
-    muWbb = (1 - struct_fact(180/2,sWr,sr,180)) * muW + (1 - unstruct_fact(sr,L)) * muWb
-    muWbp = struct_fact(180/2,sWr,sr,180) * muW + unstruct_fact(sr,L) * muWb
-    muWpb = (1 - struct_fact(0,sWr,sr,180)) * muW + (1 - unstruct_fact(sr,L)) * muWb
-    muWpp = struct_fact(0,sWr,sr,180) * muW + unstruct_fact(sr,L) * muWb
-
-    SigWbb = (1 - struct_fact(180/2,sWCr,sCr,180)) * SigW + (1 - unstruct_fact(sCr,L)) * SigWb
-    SigWbp = struct_fact(180/2,sWCr,sCr,180) * SigW + unstruct_fact(sCr,L) * SigWb
-    SigWpb = (1 - struct_fact(0,sWCr,sCr,180)) * SigW + (1 - unstruct_fact(sCr,L)) * SigWb
-    SigWpp = struct_fact(0,sWCr,sCr,180) * SigW + unstruct_fact(sCr,L) * SigWb
-    
-    muHb = tau*Hb
-    SigHb = ((tau*Hb*eH)**2)[:,None]
-    muHp = tau*Hp
-    SigHp = ((tau*Hp*eH)**2)[:,None]
-    
-    Norig = SigHb.shape[1]
-    if Norig!=Nsav:
-        temp = SigHb.copy()
-        SigHb = np.zeros((2,Nsav))
-        SigHb[:,:Norig] = temp
-        SigHb[:,Norig:] = temp[:,-1:]
-        
-        temp = SigHp.copy()
-        SigHp = np.zeros((2,Nsav))
-        SigHp[:,:Norig] = temp
-        SigHp[:,Norig:] = temp[:,-1:]
-    
-    muWs = np.block([[muWbb,muWbp],[muWpb,muWpp]])
-    SigWs = np.block([[SigWbb,SigWbp],[SigWpb,SigWpp]])
-    muHs = np.concatenate([muHb,muHp])
-    SigHs = np.concatenate([SigHb,SigHp],axis=0)
-    taus = np.concatenate([tau,tau])
-    
-    FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
-    FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
-    
-    def base_M(mui,Sigii,out):
-        out[0] = ME(mui[0],Sigii[0])[0]
-        out[1] = MI(mui[1],Sigii[1])[0]
-        out[2] = ME(mui[2],Sigii[2])[0]
-        out[3] = MI(mui[3],Sigii[3])[0]
-        
-    def base_C(mui,Sigii,Sigij,out):
-        out[0] = CE(mui[0],Sigii[0],Sigij[0])[0]
-        out[1] = CI(mui[1],Sigii[1],Sigij[1])[0]
-        out[2] = CE(mui[2],Sigii[2],Sigij[2])[0]
-        out[3] = CI(mui[3],Sigii[3],Sigij[3])[0]
-    
-    def opto_M(mui,Sigii,out):
-        out[0] = ML(mui[0],Sigii[0])[0]
-        out[1] = MI(mui[1],Sigii[1])[0]
-        out[2] = ML(mui[2],Sigii[2])[0]
-        out[3] = MI(mui[3],Sigii[3])[0]
-        
-    def opto_C(mui,Sigii,Sigij,out):
-        out[0] = CL(mui[0],Sigii[0],Sigij[0])[0]
-        out[1] = CI(mui[1],Sigii[1],Sigij[1])[0]
-        out[2] = CL(mui[2],Sigii[2],Sigij[2])[0]
-        out[3] = CI(mui[3],Sigii[3],Sigij[3])[0]
-    
-    start = time.process_time()
-    
-    if which=="base":
-        full_r,full_Cr,conv = gauss_dmft(taus,muWs,SigWs,muHs,SigHs,base_M,base_C,Twrm,Tsav,dt)
-    elif which=="opto":
-        full_r,full_Cr,conv = gauss_dmft(taus,muWs,SigWs,muHs,SigHs,opto_M,opto_C,Twrm,Tsav,dt)
-    elif which=="both":
-        full_r,full_Cr,conv = doub_gauss_dmft(taus,muWs,SigWs,muHs,SigHs,[base_M,opto_M],[base_C,opto_C],
-                                              Twrm,Tsav,dt)
-
-        def diff_R(mu1i,mu2i,Sig1ii,Sig2ii,kij,out):
-            out[0] = R_simp(ME,ML,mu1i[0],mu2i[0],Sig1ii[0],Sig2ii[0],kij[0])
-            out[1] = R_simp(MI,MI,mu1i[1],mu2i[1],Sig1ii[1],Sig2ii[1],kij[1])
-            out[2] = R_simp(ME,ML,mu1i[2],mu2i[2],Sig1ii[2],Sig2ii[2],kij[2])
-            out[3] = R_simp(MI,MI,mu1i[3],mu2i[3],Sig1ii[3],Sig2ii[3],kij[3])
-            
-        r = full_r[:,-1]
-        Cr = full_Cr[:,-1,-1:-Nsav-1:-1]
-        
-        doub_muWs = doub_mat(muWs)
-        doub_SigWs = doub_mat(SigWs)
-        
-        mu = doub_muWs@r + doub_vec(muHs)
-        Sig = doub_SigWs@Cr + np.concatenate([SigHs,SigHs],axis=0)
-
-        full_Cdr,convd = diff_gauss_dmft(taus,muWs,SigWs,muHs,SigHs,diff_R,Twrm,Tsav,dt,r,Cr)
-    else:
-        raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
-        
-    print("integrating first stage took",time.process_time() - start,"s")
-    
-    if which in ("base","opto"):
-        # extract predicted moments after long time evolution
-        r = full_r[:,-1]
-        Cr = full_Cr[:,-1,-1:-Nsav-1:-1]
-        
-        mu = muWs@r + muHs
-        Sig = SigWs@Cr + SigHs
-    elif which=="both":
-        dr = r[:4] - r[4:]
-        Cdr = full_Cdr[:,-1,-1:-Nsav-1:-1]
-
-        dmu = mu[:4] - mu[4:]
-
-        Sigd = SigWs@Cdr
-    else:
-        raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
-    
-    res_dict = {}
-    
-    res_dict["r"] = r
-    res_dict["sr"] = sr
-    res_dict["Cr"] = Cr
-    res_dict["sCr"] = sCr
-    
-    res_dict["mu"] = mu
-    res_dict["Sig"] = Sig
-    
-    res_dict["conv"] = conv
-    
-    if which=="both":
-        res_dict["dr"] = dr
-        res_dict["Cdr"] = Cdr
-        
-        res_dict["dmu"] = dmu
-        res_dict["Sigd"] = Sigd
-        
-        res_dict["convd"] = convd
-    
-    if return_full:
-        res_dict["full_r"] = full_r
-        res_dict["full_Cr"] = full_Cr
-        if which=="both":
-            res_dict["full_Cdr"] = full_Cdr
+            res_dict["full_Cdrm"] = full_Cdrm
     
     return res_dict
 
@@ -2388,8 +2748,8 @@ def run_decoupled_three_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,dori=45
     Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
     Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
     Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
+    Hm = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
+    CVH = CVh
     sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
     sH = np.array([SoriF,SoriF],dtype=np.float32)
     
@@ -2436,14 +2796,14 @@ def run_decoupled_three_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,dori=45
         muWpp += muWpc
         SigWpp += SigWpc
     
-    muHb = tau*Hb + 2*muWbp@struct_dict.get("rp",0)
-    SigHb = ((tau*Hb*eH)**2)[:,None] + 2*SigWbp@struct_dict.get("Crp",0)
-    muHp = tau*(Hp+(Hp-Hb)*basesubwrapnorm(dori,sH,L)) + muWpb@struct_dict.get("rb",0)
-    SigHp = ((tau*(Hp+(Hp-Hb)*basesubwrapnorm(dori,sH,L))*eH)**2)[:,None] +\
+    muHb = tau*Hb + 2*muWbp@struct_dict.get("rm",0)
+    SigHb = ((tau*Hb*CVH)**2)[:,None] + 2*SigWbp@struct_dict.get("Crm",0)
+    muHm = tau*(Hm+(Hm-Hb)*basesubwrapnorm(dori,sH,L)) + muWpb@struct_dict.get("rb",0)
+    SigHm = ((tau*(Hm+(Hm-Hb)*basesubwrapnorm(dori,sH,L))*CVH)**2)[:,None] +\
         SigWpb@struct_dict.get("Crb",0)
     if not couple_peaks:
-        muHp += muWpc@struct_dict.get("rp",0)
-        SigHp += SigWpc@struct_dict.get("Crp",0)
+        muHm += muWpc@struct_dict.get("rm",0)
+        SigHm += SigWpc@struct_dict.get("Crm",0)
     
     Norig = SigHb.shape[1]
     if Norig!=Nsav:
@@ -2452,10 +2812,10 @@ def run_decoupled_three_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,dori=45
         SigHb[:,:Norig] = temp
         SigHb[:,Norig:] = temp[:,-1:]
         
-        temp = SigHp.copy()
-        SigHp = np.zeros((2,Nsav))
-        SigHp[:,:Norig] = temp
-        SigHp[:,Norig:] = temp[:,-1:]
+        temp = SigHm.copy()
+        SigHm = np.zeros((2,Nsav))
+        SigHm[:,:Norig] = temp
+        SigHm[:,Norig:] = temp[:,-1:]
     
     FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
     FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
@@ -2480,10 +2840,10 @@ def run_decoupled_three_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,dori=45
     
     if which=="base":
         full_rb,full_Crb,convb = gauss_dmft(tau,muWbb,SigWbb,muHb,SigHb,base_M,base_C,Twrm,Tsav,dt)
-        full_rp,full_Crp,convp = gauss_dmft(tau,muWpp,SigWpp,muHp,SigHp,base_M,base_C,Twrm,Tsav,dt)
+        full_rm,full_Crm,convp = gauss_dmft(tau,muWpp,SigWpp,muHm,SigHm,base_M,base_C,Twrm,Tsav,dt)
     elif which=="opto":
         full_rb,full_Crb,convb = gauss_dmft(tau,muWbb,SigWbb,muHb,SigHb,opto_M,opto_C,Twrm,Tsav,dt)
-        full_rp,full_Crp,convp = gauss_dmft(tau,muWpp,SigWpp,muHp,SigHp,opto_M,opto_C,Twrm,Tsav,dt)
+        full_rm,full_Crm,convp = gauss_dmft(tau,muWpp,SigWpp,muHm,SigHm,opto_M,opto_C,Twrm,Tsav,dt)
     else:
         raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\" and \"opto\"")
         
@@ -2491,25 +2851,25 @@ def run_decoupled_three_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,dori=45
 
     # extract predicted moments after long time evolution
     rb = full_rb[:,-1]
-    rp = full_rp[:,-1]
+    rm = full_rm[:,-1]
     Crb = full_Crb[:,-1,-1:-Nsav-1:-1]
-    Crp = full_Crp[:,-1,-1:-Nsav-1:-1]
+    Crm = full_Crm[:,-1,-1:-Nsav-1:-1]
     
     if which in ("base","opto"):
         mub = muWbb@rb + muHb
         Sigb = SigWbb@Crb + SigHb
-        mup = muWpp@rp + muHp
-        Sigp = SigWpp@Crp + SigHp
+        mup = muWpp@rm + muHm
+        Sigp = SigWpp@Crm + SigHm
     else:
         raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
     
     res_dict = {}
     
     res_dict["rb"] = rb
-    res_dict["rp"] = rp
+    res_dict["rm"] = rm
     res_dict["sr"] = sr
     res_dict["Crb"] = Crb
-    res_dict["Crp"] = Crp
+    res_dict["Crm"] = Crm
     res_dict["sCr"] = sCr
     
     res_dict["mub"] = mub
@@ -2522,9 +2882,9 @@ def run_decoupled_three_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,dori=45
     
     if return_full:
         res_dict["full_rb"] = full_rb
-        res_dict["full_rp"] = full_rp
+        res_dict["full_rm"] = full_rm
         res_dict["full_Crb"] = full_Crb
-        res_dict["full_Crp"] = full_Crp
+        res_dict["full_Crm"] = full_Crm
     
     return res_dict
 
@@ -2551,8 +2911,8 @@ def run_decoupled_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,Nori=20
     Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
     Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
     Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
+    Hm = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
+    CVH = CVh
     sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
     sH = np.array([SoriF,SoriF],dtype=np.float32)
     
@@ -2585,14 +2945,14 @@ def run_decoupled_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,Nori=20
         muWxs[i,i] = 0
         SigWxs[i,i] = 0
     
-    rs = struct_dict["rb"][None,:] + (struct_dict["rp"]-struct_dict["rb"])[None,:]*\
+    rs = struct_dict["rb"][None,:] + (struct_dict["rm"]-struct_dict["rb"])[None,:]*\
         basesubwrapnorm(oris[:,None],sr[None,:])
-    Crs = struct_dict["Crb"][None,:,:] + (struct_dict["Crp"]-struct_dict["Crb"])[None,:,:]*\
+    Crs = struct_dict["Crb"][None,:,:] + (struct_dict["Crm"]-struct_dict["Crb"])[None,:,:]*\
         basesubwrapnorm(oris[:,None,None],sCr[None,:,None])
     
-    muHs = tau[None,:]*(Hb[None,:] + (Hp-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:])) +\
+    muHs = tau[None,:]*(Hb[None,:] + (Hm-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:])) +\
         np.einsum("ijkl,jl->ik",muWxs,rs)
-    SigHs = ((tau[None,:]*(Hb[None,:] + (Hp-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:]))*eH)**2)[:,:,None] +\
+    SigHs = ((tau[None,:]*(Hb[None,:] + (Hm-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:]))*CVH)**2)[:,:,None] +\
         np.einsum("ijkl,jlm->ikm",SigWxs,Crs)
     
     FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
@@ -2665,141 +3025,6 @@ def run_decoupled_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,Nori=20
     
     return res_dict
 
-def run_second_stage_ring_dmft(first_res_dict,prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,L=180,return_full=False):
-    Nsav = round(Tsav/dt)+1
-    
-    K = prms["K"]
-    SoriE = prms["SoriE"]
-    SoriI = prms["SoriI"]
-    SoriF = prms["SoriF"]
-    J = prms["J"]
-    beta = prms["beta"]
-    gE = prms["gE"]
-    gI = prms["gI"]
-    hE = prms["hE"]
-    hI = prms["hI"]
-    basefrac = prms.get("basefrac",0)
-    baseinp = prms.get("baseinp",0)
-    baseprob = prms.get("baseprob",0)
-    
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
-    W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
-    Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
-    Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
-    Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
-    sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
-    sH = np.array([SoriF,SoriF],dtype=np.float32)
-    
-    sW2 = sW**2
-    
-    solve_width = get_solve_width(sa,L)
-    
-    muHb = tau*Hb
-    SigHb = (muHb*eH)**2
-    muHa = tau*(Hb+(Hp-Hb)*basesubwrapnorm(sa,sH,L))
-    SigHa = (muHa*eH)**2
-    muHp = tau*Hp
-    SigHp = (muHp*eH)**2
-    
-    FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
-    FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
-
-    def diff_R(mu1i,mu2i,Sig1ii,Sig2ii,kij,out):
-        out[0] = R_simp(ME,ML,mu1i[0],mu2i[0],Sig1ii[0],Sig2ii[0],kij[0])
-        out[1] = R_simp(MI,MI,mu1i[1],mu2i[1],Sig1ii[1],Sig2ii[1],kij[1])
-
-    rb = first_res_dict["rb"]
-    ra = first_res_dict["ra"]
-    rp = first_res_dict["rp"]
-    Crb = first_res_dict["Crb"]
-    Cra = first_res_dict["Cra"]
-    Crp = first_res_dict["Crp"]
-    
-    muW = tau[:,None]*W*Ks
-    SigW = tau[:,None]**2*W**2*Ks
-    muWb = tau[:,None]*W*Kbs
-    SigWb = tau[:,None]**2*W**2*Kbs
-    
-    doub_muW = doub_mat(muW)
-    doub_SigW = doub_mat(SigW)
-    doub_muWb = doub_mat(muWb)
-    doub_SigWb = doub_mat(SigWb)
-    
-    sr = solve_width((ra-rb)/(rp-rb))
-    sWr = np.sqrt(doub_mat(sW2)+sr**2)
-    rpmb = rp-rb
-    sCr = solve_width((Cra-Crb)/(Crp-Crb))
-    sWCr = np.sqrt(doub_mat(sW2)[:,:,None]+sCr[None,:,:]**2)
-    Crpmb = Crp-Crb
-    
-    mub = (doub_muW+doub_muWb)@rb + (unstruct_fact(sr,L)*doub_muWb)@rpmb + doub_vec(muHb)
-    mua = mub + (struct_fact(sa,sWr,sr,L)*doub_muW)@rpmb + doub_vec(muHa-muHb)
-    mup = mub + (struct_fact(0,sWr,sr,L)*doub_muW)@rpmb + doub_vec(muHp-muHb)
-    mub = mub + (struct_fact(L/2,sWr,sr,L)*doub_muW)@rpmb
-    Sigb = (doub_SigW+doub_SigWb)@Crb + each_matmul(unstruct_fact(sCr,L)*doub_SigWb[:,:,None],Crpmb) +\
-        doub_vec(SigHb)[:,None]
-    Siga = Sigb + each_matmul(struct_fact(sa,sWCr,sCr,L)*doub_SigW[:,:,None],Crpmb) + doub_vec(SigHa-SigHb)[:,None]
-    Sigp = Sigb + each_matmul(struct_fact(0,sWCr,sCr,L)*doub_SigW[:,:,None],Crpmb) + doub_vec(SigHp-SigHb)[:,None]
-    Sigb = Sigb + each_matmul(struct_fact(L/2,sWCr,sCr,L)*doub_SigW[:,:,None],Crpmb)
-
-    start = time.process_time()
-
-    full_Cdrb,full_Cdra,full_Cdrp,\
-        convdb,convda,convdp = diff_sparse_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,sa,diff_R,Twrm,Tsav,dt,
-                                                rb,ra,rp,Crb,Cra,Crp,Kb=Kbs,L=L)
-
-    print("integrating second stage took",time.process_time() - start,"s")
-
-    # extract predicted moments after long time evolution
-    drb = rb[2:] - rb[:2]
-    dra = ra[2:] - ra[:2]
-    drp = rp[2:] - rp[:2]
-    Cdrb = full_Cdrb[:,-1,-1:-Nsav-1:-1]
-    Cdra = full_Cdra[:,-1,-1:-Nsav-1:-1]
-    Cdrp = full_Cdrp[:,-1,-1:-Nsav-1:-1]
-
-    dmub = mub[2:] - mub[:2]
-    dmua = mua[2:] - mua[:2]
-    dmup = mup[2:] - mup[:2]
-
-    sCdr = solve_width((Cdra-Cdrb)/(Cdrp-Cdrb))
-    sWCdr = np.sqrt(sW2[:,:,None]+sCdr[None,:,:]**2)
-    Cdrpmb = Cdrp - Cdrb
-    Sigdb = (SigW+SigWb)@Cdrb + each_matmul(unstruct_fact(sCdr,L)*SigWb[:,:,None],Cdrpmb)
-    Sigda = Sigdb + each_matmul(struct_fact(sa,sWCdr,sCdr,L)*SigW[:,:,None],Cdrpmb)
-    Sigdp = Sigdb + each_matmul(struct_fact(0,sWCdr,sCdr,L)*SigW[:,:,None],Cdrpmb)
-    Sigdb = Sigdb + each_matmul(struct_fact(L/2,sWCdr,sCdr,L)*SigW[:,:,None],Cdrpmb)
-    
-    res_dict = {}
-    
-    res_dict["drb"] = drb
-    res_dict["dra"] = dra
-    res_dict["drp"] = drp
-    res_dict["Cdrb"] = Cdrb
-    res_dict["Cdra"] = Cdra
-    res_dict["Cdrp"] = Cdrp
-    res_dict["sCdr"] = sCdr
-    
-    res_dict["dmub"] = dmub
-    res_dict["dmua"] = dmua
-    res_dict["dmup"] = dmup
-    res_dict["Sigdb"] = Sigdb
-    res_dict["Sigda"] = Sigda
-    res_dict["Sigdp"] = Sigdp
-
-    res_dict["convdb"] = convdb
-    res_dict["convda"] = convda
-    res_dict["convdp"] = convdp
-    
-    if return_full:
-        res_dict["full_Cdrb"] = full_Cdrb
-        res_dict["full_Cdra"] = full_Cdra
-        res_dict["full_Cdrp"] = full_Cdrp
-    
-    return res_dict
-
 def run_two_stage_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,L=180,return_full=False):
     Nsav = round(Tsav/dt)+1
     
@@ -2822,8 +3047,8 @@ def run_two_stage_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,L=180,r
     Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
     Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
     Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
+    Hm = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
+    CVH = CVh
     sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
     sH = np.array([SoriF,SoriF],dtype=np.float32)
     
@@ -2832,11 +3057,11 @@ def run_two_stage_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,L=180,r
     solve_width = get_solve_width(sa,L)
     
     muHb = tau*Hb
-    SigHb = (muHb*eH)**2
-    muHa = tau*(Hb+(Hp-Hb)*basesubwrapnorm(sa,sH,L))
-    SigHa = (muHa*eH)**2
-    muHp = tau*Hp
-    SigHp = (muHp*eH)**2
+    SigHb = (muHb*CVH)**2
+    muHa = tau*(Hb+(Hm-Hb)*basesubwrapnorm(sa,sH,L))
+    SigHa = (muHa*CVH)**2
+    muHm = tau*Hm
+    SigHm = (muHm*CVH)**2
     
     FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
     FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
@@ -2863,8 +3088,8 @@ def run_two_stage_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,L=180,r
     
     start = time.process_time()
     
-    full_rb,full_ra,full_rp,full_Crb,full_Cra,full_Crp,\
-        convb,conva,convp = doub_sparse_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,sa,[base_M,opto_M],[base_C,opto_C],
+    full_rb,full_ra,full_rm,full_Crb,full_Cra,full_Crm,\
+        convb,conva,convp = doub_sparse_ring_dmft(tau,W,Ks,Hb,Hm,CVH,sW,sH,sa,[base_M,opto_M],[base_C,opto_C],
                                                   Twrm,Tsav,dt,Kb=Kbs,L=L)
 
     print("integrating first stage took",time.process_time() - start,"s")
@@ -2872,10 +3097,10 @@ def run_two_stage_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,L=180,r
     # extract predicted moments after long time evolution
     rb = full_rb[:,-1]
     ra = full_ra[:,-1]
-    rp = full_rp[:,-1]
+    rm = full_rm[:,-1]
     Crb = full_Crb[:,-1,-1:-Nsav-1:-1]
     Cra = full_Cra[:,-1,-1:-Nsav-1:-1]
-    Crp = full_Crp[:,-1,-1:-Nsav-1:-1]
+    Crm = full_Crm[:,-1,-1:-Nsav-1:-1]
     
     muW = tau[:,None]*W*Ks
     SigW = tau[:,None]**2*W**2*Ks
@@ -2887,67 +3112,67 @@ def run_two_stage_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,L=180,r
     doub_muWb = doub_mat(muWb)
     doub_SigWb = doub_mat(SigWb)
     
-    sr = solve_width((ra-rb)/(rp-rb))
+    sr = solve_width((ra-rb)/(rm-rb))
     sWr = np.sqrt(doub_mat(sW2)+sr**2)
-    rpmb = rp-rb
-    sCr = solve_width((Cra-Crb)/(Crp-Crb))
+    rmsubb = rm-rb
+    sCr = solve_width((Cra-Crb)/(Crm-Crb))
     sWCr = np.sqrt(doub_mat(sW2)[:,:,None]+sCr[None,:,:]**2)
-    Crpmb = Crp-Crb
+    Crmsubb = Crm-Crb
     
-    mub = (doub_muW+doub_muWb)@rb + (unstruct_fact(sr,L)*doub_muWb)@rpmb + doub_vec(muHb)
-    mua = mub + (struct_fact(sa,sWr,sr,L)*doub_muW)@rpmb + doub_vec(muHa-muHb)
-    mup = mub + (struct_fact(0,sWr,sr,L)*doub_muW)@rpmb + doub_vec(muHp-muHb)
-    mub = mub + (struct_fact(L/2,sWr,sr,L)*doub_muW)@rpmb
-    Sigb = (doub_SigW+doub_SigWb)@Crb + each_matmul(unstruct_fact(sCr,L)*doub_SigWb[:,:,None],Crpmb) +\
+    mub = (doub_muW+doub_muWb)@rb + (unstruct_fact(sr,L)*doub_muWb)@rmsubb + doub_vec(muHb)
+    mua = mub + (struct_fact(sa,sWr,sr,L)*doub_muW)@rmsubb + doub_vec(muHa-muHb)
+    mup = mub + (struct_fact(0,sWr,sr,L)*doub_muW)@rmsubb + doub_vec(muHm-muHb)
+    mub = mub + (struct_fact(L/2,sWr,sr,L)*doub_muW)@rmsubb
+    Sigb = (doub_SigW+doub_SigWb)@Crb + each_matmul(unstruct_fact(sCr,L)*doub_SigWb[:,:,None],Crmsubb) +\
         doub_vec(SigHb)[:,None]
-    Siga = Sigb + each_matmul(struct_fact(sa,sWCr,sCr,L)*doub_SigW[:,:,None],Crpmb) + doub_vec(SigHa-SigHb)[:,None]
-    Sigp = Sigb + each_matmul(struct_fact(0,sWCr,sCr,L)*doub_SigW[:,:,None],Crpmb) + doub_vec(SigHp-SigHb)[:,None]
-    Sigb = Sigb + each_matmul(struct_fact(L/2,sWCr,sCr,L)*doub_SigW[:,:,None],Crpmb)
+    Siga = Sigb + each_matmul(struct_fact(sa,sWCr,sCr,L)*doub_SigW[:,:,None],Crmsubb) + doub_vec(SigHa-SigHb)[:,None]
+    Sigp = Sigb + each_matmul(struct_fact(0,sWCr,sCr,L)*doub_SigW[:,:,None],Crmsubb) + doub_vec(SigHm-SigHb)[:,None]
+    Sigb = Sigb + each_matmul(struct_fact(L/2,sWCr,sCr,L)*doub_SigW[:,:,None],Crmsubb)
 
     start = time.process_time()
 
-    full_Cdrb,full_Cdra,full_Cdrp,\
-        convdb,convda,convdp = diff_sparse_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,sa,diff_R,Twrm,Tsav,dt,
-                                                rb,ra,rp,Crb,Cra,Crp,Kb=Kbs,L=L)
+    full_Cdrb,full_Cdra,full_Cdrm,\
+        convdb,convda,convdp = diff_sparse_ring_dmft(tau,W,Ks,Hb,Hm,CVH,sW,sH,sa,diff_R,Twrm,Tsav,dt,
+                                                rb,ra,rm,Crb,Cra,Crm,Kb=Kbs,L=L)
 
     print("integrating second stage took",time.process_time() - start,"s")
 
     # extract predicted moments after long time evolution
     drb = rb[2:] - rb[:2]
     dra = ra[2:] - ra[:2]
-    drp = rp[2:] - rp[:2]
+    drm = rm[2:] - rm[:2]
     Cdrb = full_Cdrb[:,-1,-1:-Nsav-1:-1]
     Cdra = full_Cdra[:,-1,-1:-Nsav-1:-1]
-    Cdrp = full_Cdrp[:,-1,-1:-Nsav-1:-1]
+    Cdrm = full_Cdrm[:,-1,-1:-Nsav-1:-1]
 
     dmub = mub[2:] - mub[:2]
     dmua = mua[2:] - mua[:2]
     dmup = mup[2:] - mup[:2]
 
-    sCdr = solve_width((Cdra-Cdrb)/(Cdrp-Cdrb))
+    sCdr = solve_width((Cdra-Cdrb)/(Cdrm-Cdrb))
     sWCdr = np.sqrt(sW2[:,:,None]+sCdr[None,:,:]**2)
-    Cdrpmb = Cdrp - Cdrb
-    Sigdb = (SigW+SigWb)@Cdrb + each_matmul(unstruct_fact(sCdr,L)*SigWb[:,:,None],Cdrpmb)
-    Sigda = Sigdb + each_matmul(struct_fact(sa,sWCdr,sCdr,L)*SigW[:,:,None],Cdrpmb)
-    Sigdp = Sigdb + each_matmul(struct_fact(0,sWCdr,sCdr,L)*SigW[:,:,None],Cdrpmb)
-    Sigdb = Sigdb + each_matmul(struct_fact(L/2,sWCdr,sCdr,L)*SigW[:,:,None],Cdrpmb)
+    Cdrmsubb = Cdrm - Cdrb
+    Sigdb = (SigW+SigWb)@Cdrb + each_matmul(unstruct_fact(sCdr,L)*SigWb[:,:,None],Cdrmsubb)
+    Sigda = Sigdb + each_matmul(struct_fact(sa,sWCdr,sCdr,L)*SigW[:,:,None],Cdrmsubb)
+    Sigdp = Sigdb + each_matmul(struct_fact(0,sWCdr,sCdr,L)*SigW[:,:,None],Cdrmsubb)
+    Sigdb = Sigdb + each_matmul(struct_fact(L/2,sWCdr,sCdr,L)*SigW[:,:,None],Cdrmsubb)
     
     res_dict = {}
     
     res_dict["rb"] = rb
     res_dict["ra"] = ra
-    res_dict["rp"] = rp
+    res_dict["rm"] = rm
     res_dict["sr"] = sr
     res_dict["Crb"] = Crb
     res_dict["Cra"] = Cra
-    res_dict["Crp"] = Crp
+    res_dict["Crm"] = Crm
     res_dict["sCr"] = sCr
     res_dict["drb"] = drb
     res_dict["dra"] = dra
-    res_dict["drp"] = drp
+    res_dict["drm"] = drm
     res_dict["Cdrb"] = Cdrb
     res_dict["Cdra"] = Cdra
-    res_dict["Cdrp"] = Cdrp
+    res_dict["Cdrm"] = Cdrm
     res_dict["sCdr"] = sCdr
     
     res_dict["mub"] = mub
@@ -2973,326 +3198,13 @@ def run_two_stage_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,L=180,r
     if return_full:
         res_dict["full_rb"] = full_rb
         res_dict["full_ra"] = full_ra
-        res_dict["full_rp"] = full_rp
+        res_dict["full_rm"] = full_rm
         res_dict["full_Crb"] = full_Crb
         res_dict["full_Cra"] = full_Cra
-        res_dict["full_Crp"] = full_Crp
+        res_dict["full_Crm"] = full_Crm
         res_dict["full_Cdrb"] = full_Cdrb
         res_dict["full_Cdra"] = full_Cdra
-        res_dict["full_Cdrp"] = full_Cdrp
-    
-    return res_dict
-
-def run_first_stage_2feat_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,dori=45,L=180,
-                                    which="both",return_full=False):    
-    Nsav = round(Tsav/dt)+1
-    
-    K = prms["K"]
-    SoriE = prms["SoriE"]
-    SoriI = prms["SoriI"]
-    SoriF = prms["SoriF"]
-    J = prms["J"]
-    beta = prms["beta"]
-    gE = prms["gE"]
-    gI = prms["gI"]
-    hE = prms["hE"]
-    hI = prms["hI"]
-    basefrac = prms.get("basefrac",0)
-    baseinp = prms.get("baseinp",0)
-    baseprob = prms.get("baseprob",0)
-    
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
-    W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
-    Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
-    Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
-    Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
-    sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
-    sH = np.array([SoriF,SoriF],dtype=np.float32)
-    
-    sW2 = sW**2
-    
-    xpeaks = np.array([0,-dori])
-    solve_width = get_2feat_solve_width(sa,dori,L)
-    
-    muHb = tau*Hb
-    SigHb = (muHb*eH)**2
-    muHa = tau*(Hb+(Hp-Hb)*(basesubwrapnorm(sa,sH,L)+basesubwrapnorm(dori+sa,sH,L)))
-    SigHa = (muHa*eH)**2
-    muHp = tau*(Hp+(Hp-Hb)*basesubwrapnorm(dori,sH,L))
-    SigHp = (muHp*eH)**2
-    
-    FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
-    FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
-    
-    def base_M(mui,Sigii,out):
-        out[0] = ME(mui[0],Sigii[0])[0]
-        out[1] = MI(mui[1],Sigii[1])[0]
-        
-    def base_C(mui,Sigii,Sigij,out):
-        out[0] = CE(mui[0],Sigii[0],Sigij[0])[0]
-        out[1] = CI(mui[1],Sigii[1],Sigij[1])[0]
-    
-    def opto_M(mui,Sigii,out):
-        out[0] = ML(mui[0],Sigii[0])[0]
-        out[1] = MI(mui[1],Sigii[1])[0]
-        
-    def opto_C(mui,Sigii,Sigij,out):
-        out[0] = CL(mui[0],Sigii[0],Sigij[0])[0]
-        out[1] = CI(mui[1],Sigii[1],Sigij[1])[0]
-    
-    start = time.process_time()
-    
-    if which=="base":
-        full_rb,full_ra,full_rp,full_Crb,full_Cra,full_Crp,\
-            convb,conva,convp = sparse_2feat_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,sa,base_M,base_C,Twrm,Tsav,dt,
-            Kb=Kbs,dori=dori,L=L)
-    elif which=="opto":
-        full_rb,full_ra,full_rp,full_Crb,full_Cra,full_Crp,\
-            convb,conva,convp = sparse_2feat_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,sa,opto_M,opto_C,Twrm,Tsav,dt,
-            Kb=Kbs,dori=dori,L=L)
-    elif which=="both":
-        full_rb,full_ra,full_rp,full_Crb,full_Cra,full_Crp,\
-            convb,conva,convp = doub_sparse_2feat_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,sa,[base_M,opto_M],[base_C,opto_C],
-                                                            Twrm,Tsav,dt,Kb=Kbs,dori=dori,L=L)
-    else:
-        raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
-        
-    print("integrating first stage took",time.process_time() - start,"s")
-
-    # extract predicted moments after long time evolution
-    rb = full_rb[:,-1]
-    ra = full_ra[:,-1]
-    rp = full_rp[:,-1]
-    Crb = full_Crb[:,-1,-1:-Nsav-1:-1]
-    Cra = full_Cra[:,-1,-1:-Nsav-1:-1]
-    Crp = full_Crp[:,-1,-1:-Nsav-1:-1]
-    
-    muW = tau[:,None]*W*Ks
-    SigW = tau[:,None]**2*W**2*Ks
-    muWb = tau[:,None]*W*Kbs
-    SigWb = tau[:,None]**2*W**2*Kbs
-    
-    sr = solve_width((ra-rb)/(rp-rb))
-    sCr = solve_width((Cra-Crb)/(Crp-Crb))
-    
-    if which in ("base","opto"):
-        sWr = np.sqrt(sW2+sr**2)
-        rOinv = np.sum(inv_overlap(xpeaks,sr[:,None])[:,:,0],-1)
-        rpmb = (rp - rb)*rOinv
-        sWCr = np.sqrt(sW2[:,:,None]+sCr[None,:,:]**2)
-        CrOinv = np.sum(inv_overlap(xpeaks,sCr.flatten()[:,None])[:,:,0],-1).reshape(-1,Nsav)
-        Crpmb = (Crp - Crb)*CrOinv
-        mub = (muW+muWb)@rb + (unstruct_fact(sr,L)*muWb)@rpmb + muHb
-        mua = mub + ((struct_fact(sa,sWr,sr,L)+struct_fact(sa+dori,sWr,sr,L))*muW)@rpmb + muHa-muHb
-        mup = mub + ((struct_fact(0,sWr,sr,L)+struct_fact(dori,sWr,sr,L))*muW)@rpmb + muHp-muHb
-        mub = mub + (2*struct_fact(L/2,sWr,sr,L)*muW)@rpmb
-        Sigb = (SigW+SigWb)@Crb + each_matmul(unstruct_fact(sCr,L)*SigWb[:,:,None],Crpmb) + (SigHb)[:,None]
-        Siga = Sigb + each_matmul((struct_fact(sa,sWCr,sCr,L)+\
-                                   struct_fact(sa+dori,sWCr,sCr,L))*SigW[:,:,None],Crpmb) + (SigHa-SigHb)[:,None]
-        Sigp = Sigb + each_matmul((struct_fact(0,sWCr,sCr,L)+\
-                                   struct_fact(dori,sWCr,sCr,L))*SigW[:,:,None],Crpmb) + (SigHp-SigHb)[:,None]
-        Sigb = Sigb + each_matmul(2*struct_fact(L/2,sWCr,sCr,L)*SigW[:,:,None],Crpmb)
-    elif which=="both":
-        doub_muW = doub_mat(muW)
-        doub_SigW = doub_mat(SigW)
-        doub_muWb = doub_mat(muWb)
-        doub_SigWb = doub_mat(SigWb)
-        
-        sWr = np.sqrt(doub_mat(sW2)+sr**2)
-        rOinv = np.sum(inv_overlap(xpeaks,sr[:,None])[:,:,0],-1)
-        rpmb = (rp - rb)*rOinv
-        sWCr = np.sqrt(doub_mat(sW2)[:,:,None]+sCr[None,:,:]**2)
-        CrOinv = np.sum(inv_overlap(xpeaks,sCr.flatten()[:,None])[:,:,0],-1).reshape(-1,Nsav)
-        Crpmb = (Crp - Crb)*CrOinv
-        mub = (doub_muW+doub_muWb)@rb + (unstruct_fact(sr,L)*doub_muWb)@rpmb + doub_vec(muHb)
-        mua = mub + ((struct_fact(sa,sWr,sr,L)+struct_fact(sa+dori,sWr,sr,L))*doub_muW)@rpmb + doub_vec(muHa-muHb)
-        mup = mub + ((struct_fact(0,sWr,sr,L)+struct_fact(dori,sWr,sr,L))*doub_muW)@rpmb + doub_vec(muHp-muHb)
-        mub = mub + (2*struct_fact(L/2,sWr,sr,L)*doub_muW)@rpmb
-        Sigb = (doub_SigW+doub_SigWb)@Crb + each_matmul(unstruct_fact(sCr,L)*doub_SigWb[:,:,None],Crpmb) +\
-            doub_vec(SigHb)[:,None]
-        Siga = Sigb + each_matmul((struct_fact(sa,sWCr,sCr,L)+\
-                                   struct_fact(sa+dori,sWCr,sCr,L))*doub_SigW[:,:,None],Crpmb) +\
-                                       doub_vec(SigHa-SigHb)[:,None]
-        Sigp = Sigb + each_matmul((struct_fact(0,sWCr,sCr,L)+\
-                                   struct_fact(dori,sWCr,sCr,L))*doub_SigW[:,:,None],Crpmb) +\
-                                       doub_vec(SigHp-SigHb)[:,None]
-        Sigb = Sigb + each_matmul(2*struct_fact(L/2,sWCr,sCr,L)*doub_SigW[:,:,None],Crpmb)
-    else:
-        raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
-    
-    res_dict = {}
-    
-    res_dict["rb"] = rb
-    res_dict["ra"] = ra
-    res_dict["rp"] = rp
-    res_dict["sr"] = sr
-    res_dict["Crb"] = Crb
-    res_dict["Cra"] = Cra
-    res_dict["Crp"] = Crp
-    res_dict["sCr"] = sCr
-    
-    res_dict["mub"] = mub
-    res_dict["mua"] = mua
-    res_dict["mup"] = mup
-    res_dict["Sigb"] = Sigb
-    res_dict["Siga"] = Siga
-    res_dict["Sigp"] = Sigp
-    
-    res_dict["convb"] = convb
-    res_dict["conva"] = conva
-    res_dict["convp"] = convp
-    
-    if return_full:
-        res_dict["full_rb"] = full_rb
-        res_dict["full_ra"] = full_ra
-        res_dict["full_rp"] = full_rp
-        res_dict["full_Crb"] = full_Crb
-        res_dict["full_Cra"] = full_Cra
-        res_dict["full_Crp"] = full_Crp
-    
-    return res_dict
-
-def run_second_stage_2feat_ring_dmft(first_res_dict,prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,
-                                     sa=15,dori=45,L=180,return_full=False):
-    Nsav = round(Tsav/dt)+1
-    
-    K = prms["K"]
-    SoriE = prms["SoriE"]
-    SoriI = prms["SoriI"]
-    SoriF = prms["SoriF"]
-    J = prms["J"]
-    beta = prms["beta"]
-    gE = prms["gE"]
-    gI = prms["gI"]
-    hE = prms["hE"]
-    hI = prms["hI"]
-    basefrac = prms.get("basefrac",0)
-    baseinp = prms.get("baseinp",0)
-    baseprob = prms.get("baseprob",0)
-    
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
-    W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
-    Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
-    Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
-    Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
-    sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
-    sH = np.array([SoriF,SoriF],dtype=np.float32)
-    
-    sW2 = sW**2
-    
-    xpeaks = np.array([0,-dori])
-    solve_width = get_2feat_solve_width(sa,dori,L)
-    
-    muHb = tau*Hb
-    SigHb = (muHb*eH)**2
-    muHa = tau*(Hb+(Hp-Hb)*(basesubwrapnorm(sa,sH,L)+basesubwrapnorm(dori+sa,sH,L)))
-    SigHa = (muHa*eH)**2
-    muHp = tau*(Hp+(Hp-Hb)*basesubwrapnorm(dori,sH,L))
-    SigHp = (muHp*eH)**2
-    
-    FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
-    FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
-
-    def diff_R(mu1i,mu2i,Sig1ii,Sig2ii,kij,out):
-        out[0] = R_simp(ME,ML,mu1i[0],mu2i[0],Sig1ii[0],Sig2ii[0],kij[0])
-        out[1] = R_simp(MI,MI,mu1i[1],mu2i[1],Sig1ii[1],Sig2ii[1],kij[1])
-
-    rb = first_res_dict["rb"]
-    ra = first_res_dict["ra"]
-    rp = first_res_dict["rp"]
-    Crb = first_res_dict["Crb"]
-    Cra = first_res_dict["Cra"]
-    Crp = first_res_dict["Crp"]
-    
-    muW = tau[:,None]*W*Ks
-    SigW = tau[:,None]**2*W**2*Ks
-    muWb = tau[:,None]*W*Kbs
-    SigWb = tau[:,None]**2*W**2*Kbs
-    
-    doub_muW = doub_mat(muW)
-    doub_SigW = doub_mat(SigW)
-    doub_muWb = doub_mat(muWb)
-    doub_SigWb = doub_mat(SigWb)
-    
-    sr = solve_width((ra-rb)/(rp-rb))
-    sWr = np.sqrt(doub_mat(sW2)+sr**2)
-    rOinv = np.sum(inv_overlap(xpeaks,sr[:,None])[:,:,0],-1)
-    rpmb = (rp-rb)*rOinv
-    sCr = solve_width((Cra-Crb)/(Crp-Crb))
-    sWCr = np.sqrt(doub_mat(sW2)[:,:,None]+sCr[None,:,:]**2)
-    CrOinv = np.sum(inv_overlap(xpeaks,sCr.flatten()[:,None])[:,:,0],-1).reshape(-1,Nsav)
-    Crpmb = (Crp-Crb)*CrOinv
-    
-    mub = (doub_muW+doub_muWb)@rb + (unstruct_fact(sr,L)*doub_muWb)@rpmb + doub_vec(muHb)
-    mua = mub + ((struct_fact(sa,sWr,sr,L)+struct_fact(sa+dori,sWr,sr,L))*doub_muW)@rpmb + doub_vec(muHa-muHb)
-    mup = mub + ((struct_fact(0,sWr,sr,L)+struct_fact(dori,sWr,sr,L))*doub_muW)@rpmb + doub_vec(muHp-muHb)
-    mub = mub + (2*struct_fact(L/2,sWr,sr,L)*doub_muW)@rpmb
-    Sigb = (doub_SigW+doub_SigWb)@Crb + each_matmul(unstruct_fact(sCr,L)*doub_SigWb[:,:,None],Crpmb) +\
-        doub_vec(SigHb)[:,None]
-    Siga = Sigb + each_matmul((struct_fact(sa,sWCr,sCr,L)+\
-        struct_fact(sa+dori,sWCr,sCr,L))*doub_SigW[:,:,None],Crpmb) + doub_vec(SigHa-SigHb)[:,None]
-    Sigp = Sigb + each_matmul((struct_fact(0,sWCr,sCr,L)+\
-        struct_fact(dori,sWCr,sCr,L))*doub_SigW[:,:,None],Crpmb) + doub_vec(SigHp-SigHb)[:,None]
-    Sigb = Sigb + each_matmul(2*struct_fact(L/2,sWCr,sCr,L)*doub_SigW[:,:,None],Crpmb)
-
-    start = time.process_time()
-
-    full_Cdrb,full_Cdra,full_Cdrp,\
-        convdb,convda,convdp = diff_sparse_2feat_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,sa,diff_R,Twrm,Tsav,dt,
-                                                           rb,ra,rp,Crb,Cra,Crp,Kb=Kbs,dori=dori,L=L)
-
-    print("integrating second stage took",time.process_time() - start,"s")
-
-    # extract predicted moments after long time evolution
-    drb = rb[2:] - rb[:2]
-    dra = ra[2:] - ra[:2]
-    drp = rp[2:] - rp[:2]
-    Cdrb = full_Cdrb[:,-1,-1:-Nsav-1:-1]
-    Cdra = full_Cdra[:,-1,-1:-Nsav-1:-1]
-    Cdrp = full_Cdrp[:,-1,-1:-Nsav-1:-1]
-
-    dmub = mub[2:] - mub[:2]
-    dmua = mua[2:] - mua[:2]
-    dmup = mup[2:] - mup[:2]
-
-    sCdr = solve_width((Cdra-Cdrb)/(Cdrp-Cdrb))
-    sWCdr = np.sqrt(sW2[:,:,None]+sCdr[None,:,:]**2)
-    CdrOinv = np.sum(inv_overlap(xpeaks,sCdr.flatten()[:,None])[:,:,0],-1).reshape(-1,Nsav)
-    Cdrpmb = (Cdrp-Cdrb)*CdrOinv
-    Sigdb = (SigW+SigWb)@Cdrb + each_matmul(unstruct_fact(sCdr,L)*SigWb[:,:,None],Cdrpmb)
-    Sigda = Sigdb + each_matmul((struct_fact(sa,sWCdr,sCdr,L)+struct_fact(sa+dori,sWCdr,sCdr,L))*SigW[:,:,None],Cdrpmb)
-    Sigdp = Sigdb + each_matmul((struct_fact(0,sWCdr,sCdr,L)+struct_fact(dori,sWCdr,sCdr,L))*SigW[:,:,None],Cdrpmb)
-    Sigdb = Sigdb + each_matmul(2*struct_fact(L/2,sWCdr,sCdr,L)*SigW[:,:,None],Cdrpmb)
-    
-    res_dict = {}
-    
-    res_dict["drb"] = drb
-    res_dict["dra"] = dra
-    res_dict["drp"] = drp
-    res_dict["Cdrb"] = Cdrb
-    res_dict["Cdra"] = Cdra
-    res_dict["Cdrp"] = Cdrp
-    res_dict["sCdr"] = sCdr
-    
-    res_dict["dmub"] = dmub
-    res_dict["dmua"] = dmua
-    res_dict["dmup"] = dmup
-    res_dict["Sigdb"] = Sigdb
-    res_dict["Sigda"] = Sigda
-    res_dict["Sigdp"] = Sigdp
-
-    res_dict["convdb"] = convdb
-    res_dict["convda"] = convda
-    res_dict["convdp"] = convdp
-    
-    if return_full:
-        res_dict["full_Cdrb"] = full_Cdrb
-        res_dict["full_Cdra"] = full_Cdra
-        res_dict["full_Cdrp"] = full_Cdrp
+        res_dict["full_Cdrm"] = full_Cdrm
     
     return res_dict
 
@@ -3318,8 +3230,8 @@ def run_two_stage_2feat_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,d
     Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
     Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
     Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
+    Hm = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
+    CVH = CVh
     sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
     sH = np.array([SoriF,SoriF],dtype=np.float32)
     
@@ -3329,11 +3241,11 @@ def run_two_stage_2feat_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,d
     solve_width = get_2feat_solve_width(sa,dori,L)
     
     muHb = tau*Hb
-    SigHb = (muHb*eH)**2
-    muHa = tau*(Hb+(Hp-Hb)*(basesubwrapnorm(sa,sH,L)+basesubwrapnorm(dori+sa,sH,L)))
-    SigHa = (muHa*eH)**2
-    muHp = tau*(Hp+(Hp-Hb)*basesubwrapnorm(dori,sH,L))
-    SigHp = (muHp*eH)**2
+    SigHb = (muHb*CVH)**2
+    muHa = tau*(Hb+(Hm-Hb)*(basesubwrapnorm(sa,sH,L)+basesubwrapnorm(dori+sa,sH,L)))
+    SigHa = (muHa*CVH)**2
+    muHm = tau*(Hm+(Hm-Hb)*basesubwrapnorm(dori,sH,L))
+    SigHm = (muHm*CVH)**2
     
     FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
     FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
@@ -3360,8 +3272,8 @@ def run_two_stage_2feat_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,d
     
     start = time.process_time()
     
-    full_rb,full_ra,full_rp,full_Crb,full_Cra,full_Crp,\
-        convb,conva,convp = doub_sparse_2feat_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,sa,[base_M,opto_M],[base_C,opto_C],
+    full_rb,full_ra,full_rm,full_Crb,full_Cra,full_Crm,\
+        convb,conva,convp = doub_sparse_2feat_ring_dmft(tau,W,Ks,Hb,Hm,CVH,sW,sH,sa,[base_M,opto_M],[base_C,opto_C],
                                                         Twrm,Tsav,dt,Kb=Kbs,dori=dori,L=L)
 
     print("integrating first stage took",time.process_time() - start,"s")
@@ -3369,10 +3281,10 @@ def run_two_stage_2feat_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,d
     # extract predicted moments after long time evolution
     rb = full_rb[:,-1]
     ra = full_ra[:,-1]
-    rp = full_rp[:,-1]
+    rm = full_rm[:,-1]
     Crb = full_Crb[:,-1,-1:-Nsav-1:-1]
     Cra = full_Cra[:,-1,-1:-Nsav-1:-1]
-    Crp = full_Crp[:,-1,-1:-Nsav-1:-1]
+    Crm = full_Crm[:,-1,-1:-Nsav-1:-1]
     
     muW = tau[:,None]*W*Ks
     SigW = tau[:,None]**2*W**2*Ks
@@ -3384,72 +3296,72 @@ def run_two_stage_2feat_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,d
     doub_muWb = doub_mat(muWb)
     doub_SigWb = doub_mat(SigWb)
     
-    sr = solve_width((ra-rb)/(rp-rb))
+    sr = solve_width((ra-rb)/(rm-rb))
     sWr = np.sqrt(doub_mat(sW2)+sr**2)
     rOinv = np.sum(inv_overlap(xpeaks,sr[:,None])[:,:,0],-1)
-    rpmb = (rp-rb)*rOinv
-    sCr = solve_width((Cra-Crb)/(Crp-Crb))
+    rmsubb = (rm-rb)*rOinv
+    sCr = solve_width((Cra-Crb)/(Crm-Crb))
     sWCr = np.sqrt(doub_mat(sW2)[:,:,None]+sCr[None,:,:]**2)
     CrOinv = np.sum(inv_overlap(xpeaks,sCr.flatten()[:,None])[:,:,0],-1).reshape(-1,Nsav)
-    Crpmb = (Crp-Crb)*CrOinv
+    Crmsubb = (Crm-Crb)*CrOinv
     
-    mub = (doub_muW+doub_muWb)@rb + (unstruct_fact(sr,L)*doub_muWb)@rpmb + doub_vec(muHb)
-    mua = mub + ((struct_fact(sa,sWr,sr,L)+struct_fact(sa+dori,sWr,sr,L))*doub_muW)@rpmb + doub_vec(muHa-muHb)
-    mup = mub + ((struct_fact(0,sWr,sr,L)+struct_fact(dori,sWr,sr,L))*doub_muW)@rpmb + doub_vec(muHp-muHb)
-    mub = mub + (2*struct_fact(L/2,sWr,sr,L)*doub_muW)@rpmb
-    Sigb = (doub_SigW+doub_SigWb)@Crb + each_matmul(unstruct_fact(sCr,L)*doub_SigWb[:,:,None],Crpmb) +\
+    mub = (doub_muW+doub_muWb)@rb + (unstruct_fact(sr,L)*doub_muWb)@rmsubb + doub_vec(muHb)
+    mua = mub + ((struct_fact(sa,sWr,sr,L)+struct_fact(sa+dori,sWr,sr,L))*doub_muW)@rmsubb + doub_vec(muHa-muHb)
+    mup = mub + ((struct_fact(0,sWr,sr,L)+struct_fact(dori,sWr,sr,L))*doub_muW)@rmsubb + doub_vec(muHm-muHb)
+    mub = mub + (2*struct_fact(L/2,sWr,sr,L)*doub_muW)@rmsubb
+    Sigb = (doub_SigW+doub_SigWb)@Crb + each_matmul(unstruct_fact(sCr,L)*doub_SigWb[:,:,None],Crmsubb) +\
         doub_vec(SigHb)[:,None]
     Siga = Sigb + each_matmul((struct_fact(sa,sWCr,sCr,L)+\
-        struct_fact(sa+dori,sWCr,sCr,L))*doub_SigW[:,:,None],Crpmb) + doub_vec(SigHa-SigHb)[:,None]
+        struct_fact(sa+dori,sWCr,sCr,L))*doub_SigW[:,:,None],Crmsubb) + doub_vec(SigHa-SigHb)[:,None]
     Sigp = Sigb + each_matmul((struct_fact(0,sWCr,sCr,L)+\
-        struct_fact(dori,sWCr,sCr,L))*doub_SigW[:,:,None],Crpmb) + doub_vec(SigHp-SigHb)[:,None]
-    Sigb = Sigb + each_matmul(2*struct_fact(L/2,sWCr,sCr,L)*doub_SigW[:,:,None],Crpmb)
+        struct_fact(dori,sWCr,sCr,L))*doub_SigW[:,:,None],Crmsubb) + doub_vec(SigHm-SigHb)[:,None]
+    Sigb = Sigb + each_matmul(2*struct_fact(L/2,sWCr,sCr,L)*doub_SigW[:,:,None],Crmsubb)
 
     start = time.process_time()
 
-    full_Cdrb,full_Cdra,full_Cdrp,\
-        convdb,convda,convdp = diff_sparse_2feat_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,sa,diff_R,Twrm,Tsav,dt,
-                                                           rb,ra,rp,Crb,Cra,Crp,Kb=Kbs,dori=dori,L=L)
+    full_Cdrb,full_Cdra,full_Cdrm,\
+        convdb,convda,convdp = diff_sparse_2feat_ring_dmft(tau,W,Ks,Hb,Hm,CVH,sW,sH,sa,diff_R,Twrm,Tsav,dt,
+                                                           rb,ra,rm,Crb,Cra,Crm,Kb=Kbs,dori=dori,L=L)
 
     print("integrating second stage took",time.process_time() - start,"s")
 
     # extract predicted moments after long time evolution
     drb = rb[2:] - rb[:2]
     dra = ra[2:] - ra[:2]
-    drp = rp[2:] - rp[:2]
+    drm = rm[2:] - rm[:2]
     Cdrb = full_Cdrb[:,-1,-1:-Nsav-1:-1]
     Cdra = full_Cdra[:,-1,-1:-Nsav-1:-1]
-    Cdrp = full_Cdrp[:,-1,-1:-Nsav-1:-1]
+    Cdrm = full_Cdrm[:,-1,-1:-Nsav-1:-1]
 
     dmub = mub[2:] - mub[:2]
     dmua = mua[2:] - mua[:2]
     dmup = mup[2:] - mup[:2]
 
-    sCdr = solve_width((Cdra-Cdrb)/(Cdrp-Cdrb))
+    sCdr = solve_width((Cdra-Cdrb)/(Cdrm-Cdrb))
     sWCdr = np.sqrt(sW2[:,:,None]+sCdr[None,:,:]**2)
     CdrOinv = np.sum(inv_overlap(xpeaks,sCdr.flatten()[:,None])[:,:,0],-1).reshape(-1,Nsav)
-    Cdrpmb = (Cdrp-Cdrb)*CdrOinv
-    Sigdb = (SigW+SigWb)@Cdrb + each_matmul(unstruct_fact(sCdr,L)*SigWb[:,:,None],Cdrpmb)
-    Sigda = Sigdb + each_matmul((struct_fact(sa,sWCdr,sCdr,L)+struct_fact(sa+dori,sWCdr,sCdr,L))*SigW[:,:,None],Cdrpmb)
-    Sigdp = Sigdb + each_matmul((struct_fact(0,sWCdr,sCdr,L)+struct_fact(dori,sWCdr,sCdr,L))*SigW[:,:,None],Cdrpmb)
-    Sigdb = Sigdb + each_matmul(2*struct_fact(L/2,sWCdr,sCdr,L)*SigW[:,:,None],Cdrpmb)
+    Cdrmsubb = (Cdrm-Cdrb)*CdrOinv
+    Sigdb = (SigW+SigWb)@Cdrb + each_matmul(unstruct_fact(sCdr,L)*SigWb[:,:,None],Cdrmsubb)
+    Sigda = Sigdb + each_matmul((struct_fact(sa,sWCdr,sCdr,L)+struct_fact(sa+dori,sWCdr,sCdr,L))*SigW[:,:,None],Cdrmsubb)
+    Sigdp = Sigdb + each_matmul((struct_fact(0,sWCdr,sCdr,L)+struct_fact(dori,sWCdr,sCdr,L))*SigW[:,:,None],Cdrmsubb)
+    Sigdb = Sigdb + each_matmul(2*struct_fact(L/2,sWCdr,sCdr,L)*SigW[:,:,None],Cdrmsubb)
     
     res_dict = {}
     
     res_dict["rb"] = rb
     res_dict["ra"] = ra
-    res_dict["rp"] = rp
+    res_dict["rm"] = rm
     res_dict["sr"] = sr
     res_dict["Crb"] = Crb
     res_dict["Cra"] = Cra
-    res_dict["Crp"] = Crp
+    res_dict["Crm"] = Crm
     res_dict["sCr"] = sCr
     res_dict["drb"] = drb
     res_dict["dra"] = dra
-    res_dict["drp"] = drp
+    res_dict["drm"] = drm
     res_dict["Cdrb"] = Cdrb
     res_dict["Cdra"] = Cdra
-    res_dict["Cdrp"] = Cdrp
+    res_dict["Cdrm"] = Cdrm
     res_dict["sCdr"] = sCdr
     
     res_dict["mub"] = mub
@@ -3475,238 +3387,13 @@ def run_two_stage_2feat_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,d
     if return_full:
         res_dict["full_rb"] = full_rb
         res_dict["full_ra"] = full_ra
-        res_dict["full_rp"] = full_rp
+        res_dict["full_rm"] = full_rm
         res_dict["full_Crb"] = full_Crb
         res_dict["full_Cra"] = full_Cra
-        res_dict["full_Crp"] = full_Crp
+        res_dict["full_Crm"] = full_Crm
         res_dict["full_Cdrb"] = full_Cdrb
         res_dict["full_Cdra"] = full_Cdra
-        res_dict["full_Cdrp"] = full_Cdrp
-    
-    return res_dict
-
-def run_first_stage_full_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,Nori=20,
-                                   which="both",return_full=False):    
-    Nsav = round(Tsav/dt)+1
-    
-    K = prms["K"]
-    SoriE = prms["SoriE"]
-    SoriI = prms["SoriI"]
-    SoriF = prms["SoriF"]
-    J = prms["J"]
-    beta = prms["beta"]
-    gE = prms["gE"]
-    gI = prms["gI"]
-    hE = prms["hE"]
-    hI = prms["hI"]
-    basefrac = prms.get("basefrac",0)
-    baseinp = prms.get("baseinp",0)
-    baseprob = prms.get("baseprob",0)
-    
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
-    W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
-    Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
-    Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
-    Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
-    sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
-    sH = np.array([SoriF,SoriF],dtype=np.float32)
-    
-    oris = np.arange(Nori)/Nori * L
-    doris = oris[:,None] - oris[None,:]
-    kerns = wrapnormdens(doris[:,None,:,None],sW[None,:,None,:],L)
-    
-    muHs = tau*(Hb[None,:]+(Hp-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:],L))
-    SigHs = (muHs*eH)**2
-    
-    FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
-    FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
-    
-    def base_M(mui,Sigii,out):
-        out[0] = ME(mui[0],Sigii[0])[0]
-        out[1] = MI(mui[1],Sigii[1])[0]
-        
-    def base_C(mui,Sigii,Sigij,out):
-        out[0] = CE(mui[0],Sigii[0],Sigij[0])[0]
-        out[1] = CI(mui[1],Sigii[1],Sigij[1])[0]
-    
-    def opto_M(mui,Sigii,out):
-        out[0] = ML(mui[0],Sigii[0])[0]
-        out[1] = MI(mui[1],Sigii[1])[0]
-        
-    def opto_C(mui,Sigii,Sigij,out):
-        out[0] = CL(mui[0],Sigii[0],Sigij[0])[0]
-        out[1] = CI(mui[1],Sigii[1],Sigij[1])[0]
-    
-    start = time.process_time()
-    
-    if which=="base":
-        full_rs,full_Crs,convs = sparse_full_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,base_M,base_C,
-                                                       Twrm,Tsav,dt,Kb=Kbs,L=L,Nori=Nori)
-    elif which=="opto":
-        full_rs,full_Crs,convs = sparse_full_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,opto_M,opto_C,
-                                                       Twrm,Tsav,dt,Kb=Kbs,L=L,Nori=Nori)
-    elif which=="both":
-        full_rs,full_Crs,convs = doub_sparse_full_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,[base_M,opto_M],[base_C,opto_C],
-                                                            Twrm,Tsav,dt,Kb=Kbs,L=L,Nori=Nori)
-    else:
-        raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
-        
-    print("integrating first stage took",time.process_time() - start,"s")
-
-    # extract predicted moments after long time evolution
-    rs = full_rs[:,:,-1]
-    Crs = full_Crs[:,:,-1,-1:-Nsav-1:-1]
-    
-    muW = tau[:,None]*W*Ks
-    SigW = tau[:,None]**2*W**2*Ks
-    muWb = tau[:,None]*W*Kbs
-    SigWb = tau[:,None]**2*W**2*Kbs
-    
-    muWs = (muWb[None,:,None,:] + muW[None,:,None,:]*2*np.pi*kerns) / Nori
-    SigWs = (SigWb[None,:,None,:] + SigW[None,:,None,:]*2*np.pi*kerns) / Nori
-    
-    if which in ("base","opto"):
-        mus = np.einsum("ijkl,kl->ij",muWs,rs) + muHs
-        Sigs = np.einsum("ijkl,klm->ijm",SigWs,Crs) + SigHs[:,:,None]
-    elif which=="both":
-        doub_tau = doub_vec(tau)
-        doub_muW = doub_mat(muW)
-        doub_SigW = doub_mat(SigW)
-        doub_muWb = doub_mat(muWb)
-        doub_SigWb = doub_mat(SigWb)
-        doub_sW = np.block([[sW,sW],[sW,sW]])
-        doub_Hb = doub_vec(Hb)
-        doub_Hp = doub_vec(Hp)
-        doub_sH = doub_vec(sH)
-
-        doub_kerns = wrapnormdens(doris[:,None,:,None],doub_sW[None,:,None,:],L)
-
-        doub_muWs = (doub_muWb[None,:,None,:] + doub_muW[None,:,None,:]*2*np.pi*doub_kerns) / Nori
-        doub_SigWs = (doub_SigWb[None,:,None,:] + doub_SigW[None,:,None,:]*2*np.pi*doub_kerns) / Nori
-
-        doub_muHs = doub_tau*(doub_Hb[None,:]+(doub_Hp-doub_Hb)[None,:]*basesubwrapnorm(oris[:,None],doub_sH[None,:],L))
-        doub_SigHs = (doub_muHs*eH)**2
-        
-        mus = np.einsum("ijkl,kl->ij",doub_muWs,rs) + doub_muHs
-        Sigs = np.einsum("ijkl,klm->ijm",doub_SigWs,Crs) + doub_SigHs[:,:,None]
-    else:
-        raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
-    
-    res_dict = {}
-    
-    res_dict["rs"] = rs
-    res_dict["Crs"] = Crs
-    
-    res_dict["mus"] = mus
-    res_dict["Sigs"] = Sigs
-    
-    res_dict["convs"] = convs
-    
-    if return_full:
-        res_dict["full_rs"] = full_rs
-        res_dict["full_Crs"] = full_Crs
-    
-    return res_dict
-
-def run_second_stage_full_ring_dmft(first_res_dict,prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,
-                                    L=180,Nori=20,return_full=False):
-    Nsav = round(Tsav/dt)+1
-    
-    K = prms["K"]
-    SoriE = prms["SoriE"]
-    SoriI = prms["SoriI"]
-    SoriF = prms["SoriF"]
-    J = prms["J"]
-    beta = prms["beta"]
-    gE = prms["gE"]
-    gI = prms["gI"]
-    hE = prms["hE"]
-    hI = prms["hI"]
-    basefrac = prms.get("basefrac",0)
-    baseinp = prms.get("baseinp",0)
-    baseprob = prms.get("baseprob",0)
-    
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
-    W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
-    Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
-    Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
-    Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
-    sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
-    sH = np.array([SoriF,SoriF],dtype=np.float32)
-    
-    oris = np.arange(Nori)/Nori * L
-    doris = oris[:,None] - oris[None,:]
-    kerns = wrapnormdens(doris[:,None,:,None],sW[None,:,None,:],L)
-    
-    FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
-    FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
-
-    def diff_R(mu1i,mu2i,Sig1ii,Sig2ii,kij,out):
-        out[0] = R_simp(ME,ML,mu1i[0],mu2i[0],Sig1ii[0],Sig2ii[0],kij[0])
-        out[1] = R_simp(MI,MI,mu1i[1],mu2i[1],Sig1ii[1],Sig2ii[1],kij[1])
-
-    rs = first_res_dict["rs"]
-    Crs = first_res_dict["Crs"]
-    
-    muW = tau[:,None]*W*Ks
-    SigW = tau[:,None]**2*W**2*Ks
-    muWb = tau[:,None]*W*Kbs
-    SigWb = tau[:,None]**2*W**2*Kbs
-    
-    SigWs = (SigWb[None,:,None,:] + SigW[None,:,None,:]*2*np.pi*kerns) / Nori
-    
-    doub_tau = doub_vec(tau)
-    doub_muW = doub_mat(muW)
-    doub_SigW = doub_mat(SigW)
-    doub_muWb = doub_mat(muWb)
-    doub_SigWb = doub_mat(SigWb)
-    doub_sW = np.block([[sW,sW],[sW,sW]])
-    doub_Hb = doub_vec(Hb)
-    doub_Hp = doub_vec(Hp)
-    doub_sH = doub_vec(sH)
-    
-    doub_kerns = wrapnormdens(doris[:,None,:,None],doub_sW[None,:,None,:],L)
-
-    doub_muWs = (doub_muWb[None,:,None,:] + doub_muW[None,:,None,:]*2*np.pi*doub_kerns) / Nori
-    doub_SigWs = (doub_SigWb[None,:,None,:] + doub_SigW[None,:,None,:]*2*np.pi*doub_kerns) / Nori
-
-    doub_muHs = doub_tau*(doub_Hb[None,:]+(doub_Hp-doub_Hb)[None,:]*basesubwrapnorm(oris[:,None],doub_sH[None,:],L))
-    doub_SigHs = (doub_muHs*eH)**2
-    
-    mus = np.einsum("ijkl,kl->ij",doub_muWs,rs) + doub_muHs
-    Sigs = np.einsum("ijkl,klm->ijm",doub_SigWs,Crs) + doub_SigHs[:,:,None]
-
-    start = time.process_time()
-
-    full_Cdrs,convds = diff_sparse_full_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,diff_R,Twrm,Tsav,dt,
-                                                  rs,Crs,Kb=Kbs,L=L,Nori=Nori)
-
-    print("integrating second stage took",time.process_time() - start,"s")
-
-    # extract predicted moments after long time evolution
-    drs = rs[:,2:] - rs[:,:2]
-    Cdrs = full_Cdrs[:,:,-1,-1:-Nsav-1:-1]
-
-    dmus = mus[:,2:] - mus[:,:2]
-
-    Sigds = np.einsum("ijkl,klm->ijm",SigWs,Cdrs)
-    
-    res_dict = {}
-    
-    res_dict["drs"] = drs
-    res_dict["Cdrs"] = Cdrs
-    
-    res_dict["dmus"] = dmus
-    res_dict["Sigds"] = Sigds
-
-    res_dict["convds"] = convds
-    
-    if return_full:
-        res_dict["full_Cdrs"] = full_Cdrs
+        res_dict["full_Cdrm"] = full_Cdrm
     
     return res_dict
 
@@ -3733,8 +3420,8 @@ def run_two_stage_full_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,No
     Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
     Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
     Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hp = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    eH = CVh
+    Hm = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
+    CVH = CVh
     sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
     sH = np.array([SoriF,SoriF],dtype=np.float32)
     
@@ -3742,8 +3429,8 @@ def run_two_stage_full_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,No
     doris = oris[:,None] - oris[None,:]
     kerns = wrapnormdens(doris[:,None,:,None],sW[None,:,None,:],L)
     
-    muHs = tau*(Hb[None,:]+(Hp-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:],L))
-    SigHs = (muHs*eH)**2
+    muHs = tau*(Hb[None,:]+(Hm-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:],L))
+    SigHs = (muHs*CVH)**2
     
     FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
     FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
@@ -3770,7 +3457,7 @@ def run_two_stage_full_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,No
     
     start = time.process_time()
     
-    full_rs,full_Crs,convs = doub_sparse_full_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,[base_M,opto_M],[base_C,opto_C],
+    full_rs,full_Crs,convs = doub_sparse_full_ring_dmft(tau,W,Ks,Hb,Hm,CVH,sW,sH,[base_M,opto_M],[base_C,opto_C],
                                                         Twrm,Tsav,dt,Kb=Kbs,L=L,Nori=Nori)
         
     print("integrating first stage took",time.process_time() - start,"s")
@@ -3793,7 +3480,7 @@ def run_two_stage_full_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,No
     doub_SigWb = doub_mat(SigWb)
     doub_sW = np.block([[sW,sW],[sW,sW]])
     doub_Hb = doub_vec(Hb)
-    doub_Hp = doub_vec(Hp)
+    doub_Hm = doub_vec(Hm)
     doub_sH = doub_vec(sH)
     
     doub_kerns = wrapnormdens(doris[:,None,:,None],doub_sW[None,:,None,:],L)
@@ -3801,15 +3488,15 @@ def run_two_stage_full_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,No
     doub_muWs = (doub_muWb[None,:,None,:] + doub_muW[None,:,None,:]*2*np.pi*doub_kerns) / Nori
     doub_SigWs = (doub_SigWb[None,:,None,:] + doub_SigW[None,:,None,:]*2*np.pi*doub_kerns) / Nori
 
-    doub_muHs = doub_tau*(doub_Hb[None,:]+(doub_Hp-doub_Hb)[None,:]*basesubwrapnorm(oris[:,None],doub_sH[None,:],L))
-    doub_SigHs = (doub_muHs*eH)**2
+    doub_muHs = doub_tau*(doub_Hb[None,:]+(doub_Hm-doub_Hb)[None,:]*basesubwrapnorm(oris[:,None],doub_sH[None,:],L))
+    doub_SigHs = (doub_muHs*CVH)**2
     
     mus = np.einsum("ijkl,kl->ij",doub_muWs,rs) + doub_muHs
     Sigs = np.einsum("ijkl,klm->ijm",doub_SigWs,Crs) + doub_SigHs[:,:,None]
 
     start = time.process_time()
 
-    full_Cdrs,convds = diff_sparse_full_ring_dmft(tau,W,Ks,Hb,Hp,eH,sW,sH,diff_R,Twrm,Tsav,dt,
+    full_Cdrs,convds = diff_sparse_full_ring_dmft(tau,W,Ks,Hb,Hm,CVH,sW,sH,diff_R,Twrm,Tsav,dt,
                                                   rs,Crs,Kb=Kbs,L=L,Nori=Nori)
 
     print("integrating second stage took",time.process_time() - start,"s")
