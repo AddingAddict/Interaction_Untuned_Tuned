@@ -20,7 +20,6 @@ c_idx= args["c_idx"]
 
 with open("./../model_data/best_fit.pkl", "rb") as handle:
     res_dict = pickle.load(handle)
-    
 prms = res_dict["prms"]
 CVh = res_dict["best_monk_eX"]
 bX = res_dict["best_monk_bX"]

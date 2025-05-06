@@ -64,7 +64,7 @@ def predict_networks(prms,rX,cA,CVh):
     Kbs =   prms.get("basefrac",0) *np.array([prms["K"],prms["K"]/4],dtype=np.float32)
     Hb = rX*(1+prms.get("basefrac",0)*cA)*prms["K"]*prms["J"]*\
         np.array([prms["hE"],prms["hI"]/prms["beta"]],dtype=np.float32)
-    Hp = rX*(1+                       cA)*prms["K"]*prms["J"]*\
+    Hm = rX*(1+                       cA)*prms["K"]*prms["J"]*\
         np.array([prms["hE"],prms["hI"]/prms["beta"]],dtype=np.float32)
     eH = CVh
     sW = np.array([[prms["SoriE"],prms["SoriI"]],[prms["SoriE"],prms["SoriI"]]],dtype=np.float32)
@@ -79,10 +79,10 @@ def predict_networks(prms,rX,cA,CVh):
     sH2 = sH**2
     
     muHb = tau*Hb
-    muHp = tau*Hp
+    muHm = tau*Hm
     smuH = sH
     SigHb = (muHb*eH)**2
-    SigHp = (muHp*eH)**2
+    SigHm = (muHm*eH)**2
     sSigH = 2*sH
 
     μrs = np.zeros((2,3,Nori))
@@ -103,16 +103,16 @@ def predict_networks(prms,rX,cA,CVh):
     if cA == 0 or prms.get("basefrac",0)==1:
         res_dict = dmft.run_two_stage_dmft(prms,rX*(1+cA),CVh,"./../results",ri,Twrm,Tsav,dt)
         rvb = res_dict["r"][:2]
-        rvp = res_dict["r"][:2]
+        rvm = res_dict["r"][:2]
         srv = 1e2*np.ones(2)
         rob = res_dict["r"][2:]
-        rop = res_dict["r"][2:]
+        rom = res_dict["r"][2:]
         sro = 1e2*np.ones(2)
         Crvb = dmft.grid_stat(np.mean,res_dict["Cr"][:2],Tsim,dt)
-        Crvp = dmft.grid_stat(np.mean,res_dict["Cr"][:2],Tsim,dt)
+        Crvm = dmft.grid_stat(np.mean,res_dict["Cr"][:2],Tsim,dt)
         sCrv = 1e2*np.ones(2)
         Crob = dmft.grid_stat(np.mean,res_dict["Cr"][2:],Tsim,dt)
-        Crop = dmft.grid_stat(np.mean,res_dict["Cr"][2:],Tsim,dt)
+        Crom = dmft.grid_stat(np.mean,res_dict["Cr"][2:],Tsim,dt)
         sCro = 1e2*np.ones(2)
         Cdrb = dmft.grid_stat(np.mean,res_dict["Cdr"],Tsim,dt)
         Cdrm = dmft.grid_stat(np.mean,res_dict["Cdr"],Tsim,dt)
@@ -127,16 +127,16 @@ def predict_networks(prms,rX,cA,CVh):
     else:
         res_dict = dmft.run_two_stage_ring_dmft(prms,rX,cA,CVh,"./../results",ri,Twrm,Tsav,dt)
         rvb = res_dict["rb"][:2]
-        rvp = res_dict["rm"][:2]
+        rvm = res_dict["rm"][:2]
         srv = res_dict["sr"][:2]
         rob = res_dict["rb"][2:]
-        rop = res_dict["rm"][2:]
+        rom = res_dict["rm"][2:]
         sro = res_dict["sr"][2:]
         Crvb = dmft.grid_stat(np.mean,res_dict["Crb"][:2],Tsim,dt)
-        Crvp = dmft.grid_stat(np.mean,res_dict["Crm"][:2],Tsim,dt)
+        Crvm = dmft.grid_stat(np.mean,res_dict["Crm"][:2],Tsim,dt)
         sCrv = dmft.grid_stat(np.mean,res_dict["sCr"][:2],Tsim,dt)
         Crob = dmft.grid_stat(np.mean,res_dict["Crb"][2:],Tsim,dt)
-        Crop = dmft.grid_stat(np.mean,res_dict["Crm"][2:],Tsim,dt)
+        Crom = dmft.grid_stat(np.mean,res_dict["Crm"][2:],Tsim,dt)
         sCro = dmft.grid_stat(np.mean,res_dict["sCr"][2:],Tsim,dt)
         Cdrb = dmft.grid_stat(np.mean,res_dict["Cdrb"],Tsim,dt)
         Cdrm = dmft.grid_stat(np.mean,res_dict["Cdrm"],Tsim,dt)
@@ -153,8 +153,8 @@ def predict_networks(prms,rX,cA,CVh):
                            res_dict["sCdr"][:,-1,None]) /\
                      gauss(oris[None,:],res_dict["Cdrb"][:, 0,None],res_dict["Cdrm"][:, 0,None],
                            res_dict["sCdr"][:, 0,None])
-        conv[:,0] = res_dict["convp"][:2]
-        conv[:,1] = res_dict["convp"][2:]
+        conv[:,0] = res_dict["convm"][:2]
+        conv[:,1] = res_dict["convm"][2:]
         conv[:,2] = res_dict["convdp"]
         dmft_res = res_dict.copy()
         
@@ -165,21 +165,21 @@ def predict_networks(prms,rX,cA,CVh):
     sWCdr = np.sqrt(sW2+sCdr**2)
     
     muvb = (muW+dmft.unstruct_fact(srv)*muWb)*rvb
-    muvp = muvb + dmft.struct_fact(0,sWrv,srv)*muW*(rvp-rvb)
-    muvb = muvb + dmft.struct_fact(90,sWrv,srv)*muW*(rvp-rvb)
+    muvm = muvb + dmft.struct_fact(0,sWrv,srv)*muW*(rvm-rvb)
+    muvb = muvb + dmft.struct_fact(90,sWrv,srv)*muW*(rvm-rvb)
     smuv = sWrv
     muob = (muW+dmft.unstruct_fact(sro)*muWb)*rob
-    muop = muob + dmft.struct_fact(0,sWro,sro)*muW*(rop-rob)
-    muob = muob + dmft.struct_fact(90,sWro,sro)*muW*(rop-rob)
+    muom = muob + dmft.struct_fact(0,sWro,sro)*muW*(rom-rob)
+    muob = muob + dmft.struct_fact(90,sWro,sro)*muW*(rom-rob)
     smuo = sWro
     
     Sigvb = (SigW+dmft.unstruct_fact(sCrv)*SigWb)*Crvb
-    Sigvp = Sigvb + dmft.struct_fact(0,sWCrv,sCrv)*SigW*(Crvp-Crvb)
-    Sigvb = Sigvb + dmft.struct_fact(90,sWCrv,sCrv)*SigW*(Crvp-Crvb)
+    Sigvm = Sigvb + dmft.struct_fact(0,sWCrv,sCrv)*SigW*(Crvm-Crvb)
+    Sigvb = Sigvb + dmft.struct_fact(90,sWCrv,sCrv)*SigW*(Crvm-Crvb)
     sSigv = sWCrv
     Sigob = (SigW+dmft.unstruct_fact(sCro)*SigWb)*Crob
-    Sigop = Sigob + dmft.struct_fact(0,sWCro,sCro)*SigW*(Crop-Crob)
-    Sigob = Sigob + dmft.struct_fact(90,sWCro,sCro)*SigW*(Crop-Crob)
+    Sigom = Sigob + dmft.struct_fact(0,sWCro,sCro)*SigW*(Crom-Crob)
+    Sigob = Sigob + dmft.struct_fact(90,sWCro,sCro)*SigW*(Crom-Crob)
     sSigo = sWCro
     Sigdb = (SigW+dmft.unstruct_fact(sCdr)*SigWb)*Cdrb
     Sigdp = Sigdb + dmft.struct_fact(0,sWCdr,sCdr)*SigW*(Cdrm-Cdrb)
@@ -187,25 +187,25 @@ def predict_networks(prms,rX,cA,CVh):
     sSigd = sWCdr
     
     for i in range(2):
-        μrs[i,0] = gauss(oris,rvb[i],rvp[i],srv[i])
-        μrs[i,1] = gauss(oris,rob[i],rop[i],sro[i])
+        μrs[i,0] = gauss(oris,rvb[i],rvm[i],srv[i])
+        μrs[i,1] = gauss(oris,rob[i],rom[i],sro[i])
         μrs[i,2] = μrs[i,1] - μrs[i,0]
-        Σrs[i,0] = np.fmax(gauss(oris,Crvb[i],Crvp[i],sCrv[i]) - μrs[i,0]**2,0)
-        Σrs[i,1] = np.fmax(gauss(oris,Crob[i],Crop[i],sCro[i]) - μrs[i,1]**2,0)
+        Σrs[i,0] = np.fmax(gauss(oris,Crvb[i],Crvm[i],sCrv[i]) - μrs[i,0]**2,0)
+        Σrs[i,1] = np.fmax(gauss(oris,Crob[i],Crom[i],sCro[i]) - μrs[i,1]**2,0)
         Σrs[i,2] = np.fmax(gauss(oris,Cdrb[i],Cdrm[i],sCdr[i]) - μrs[i,2]**2,0)
         Σrs[i,3] = 0.5*(Σrs[i,1] - Σrs[i,0] - Σrs[i,2])
-        μmuEs[i,0] = gauss(oris,muvb[i,0],muvp[i,0],smuv[i,0]) + gauss(oris,muHb[i],muHp[i],smuH[i])
-        μmuEs[i,1] = gauss(oris,muob[i,0],muop[i,0],smuo[i,0]) + gauss(oris,muHb[i],muHp[i],smuH[i])
+        μmuEs[i,0] = gauss(oris,muvb[i,0],muvm[i,0],smuv[i,0]) + gauss(oris,muHb[i],muHm[i],smuH[i])
+        μmuEs[i,1] = gauss(oris,muob[i,0],muom[i,0],smuo[i,0]) + gauss(oris,muHb[i],muHm[i],smuH[i])
         μmuEs[i,2] = μmuEs[i,1] - μmuEs[i,0]
-        ΣmuEs[i,0] = gauss(oris,Sigvb[i,0],Sigvp[i,0],sSigv[i,0]) + (gauss(oris,muHb[i],muHp[i],smuH[i])*eH)**2
-        ΣmuEs[i,1] = gauss(oris,Sigob[i,0],Sigop[i,0],sSigo[i,0]) + (gauss(oris,muHb[i],muHp[i],smuH[i])*eH)**2
+        ΣmuEs[i,0] = gauss(oris,Sigvb[i,0],Sigvm[i,0],sSigv[i,0]) + (gauss(oris,muHb[i],muHm[i],smuH[i])*eH)**2
+        ΣmuEs[i,1] = gauss(oris,Sigob[i,0],Sigom[i,0],sSigo[i,0]) + (gauss(oris,muHb[i],muHm[i],smuH[i])*eH)**2
         ΣmuEs[i,2] = gauss(oris,Sigdb[i,0],Sigdp[i,0],sSigd[i,0])
         ΣmuEs[i,3] =  0.5*(ΣmuEs[i,1] - ΣmuEs[i,0] - ΣmuEs[i,2])
-        μmuIs[i,0] = gauss(oris,muvb[i,1],muvp[i,1],smuv[i,1])
-        μmuIs[i,1] = gauss(oris,muob[i,1],muop[i,1],smuo[i,1])
+        μmuIs[i,0] = gauss(oris,muvb[i,1],muvm[i,1],smuv[i,1])
+        μmuIs[i,1] = gauss(oris,muob[i,1],muom[i,1],smuo[i,1])
         μmuIs[i,2] = μmuIs[i,1] - μmuIs[i,0]
-        ΣmuIs[i,0] = gauss(oris,Sigvb[i,1],Sigvp[i,1],sSigv[i,1])
-        ΣmuIs[i,1] = gauss(oris,Sigob[i,1],Sigop[i,1],sSigo[i,1])
+        ΣmuIs[i,0] = gauss(oris,Sigvb[i,1],Sigvm[i,1],sSigv[i,1])
+        ΣmuIs[i,1] = gauss(oris,Sigob[i,1],Sigom[i,1],sSigo[i,1])
         ΣmuIs[i,2] = gauss(oris,Sigdb[i,1],Sigdp[i,1],sSigd[i,1])
         ΣmuIs[i,3] =  0.5*(ΣmuIs[i,1] - ΣmuIs[i,0] - ΣmuIs[i,2])
     μmus = μmuEs + μmuIs
