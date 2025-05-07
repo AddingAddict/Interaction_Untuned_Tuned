@@ -14,34 +14,34 @@ def sim_dyn(ri,T,L,M,H,LAM,E_all,I_all,mult_tau=False,max_min=7.5,stat_stop=True
     Parameters
     ----------
     ri : Ricciardi
-        Ricciardi class object for computing the activation function
+        Ricciardi class object for computing the activation function.
     T : array-like
-        1D Array of time-points to save the rates
+        1D Array of time-points to save the rates.
     L : array-like
-        1D Array of optogenetic input strengths per cell
+        1D Array of optogenetic input strengths per cell.
     M : array-like
-        2D Array of recurrent weight matrix
+        2D Array of recurrent weight matrix.
     H : array-like
-        1D Array of afferent inputs per cell
+        1D Array of afferent inputs per cell.
     LAM : float
-        Factor by which to multiply the optogentic input strengths
+        Factor by which to multiply the optogentic input strengths.
     E_all : array-like
-        Indices of excitatory cells
+        Indices of excitatory cells.
     I_all : array-like
-        Indices of inhibitory cells
+        Indices of inhibitory cells.
     mult_tau : bool
-        Whether to multiply the input by the time constants of the cells
+        Whether to multiply the input by the time constants of the cells.
     max_min : float
-        Maximum time to run the simulation in minutes
+        Maximum time to run the simulation in minutes.
     stat_stop : bool
-        Whether to stop the simulation when it reaches a stationary state
+        Whether to stop the simulation when it reaches a stationary state.
     
     Returns
     -------
     array-like
-        2D Array of shape (Ncell x Ntime) with the rates of the cells
+        2D Array of shape (Ncell x Ntime) with the rates of the cells.
     bool
-        Whether the simulation reached the maximum time limit
+        Whether the simulation reached the maximum time limit.
     '''
     LAS = LAM*L
 
@@ -126,32 +126,32 @@ def sim_dyn_tensor(ri,T,L,M,H,LAM,E_cond,mult_tau=False,max_min=30,method=None):
     Parameters
     ----------
     ri : Ricciardi
-        Ricciardi class object for computing the activation function
+        Ricciardi class object for computing the activation function.
     T : tensor
-        1D Tensor of time-points to save the rates
+        1D Tensor of time-points to save the rates.
     L : tensor
-        1D Tensor of optogenetic input strengths per cell
+        1D Tensor of optogenetic input strengths per cell.
     M : tensor
-        2D Tensor of recurrent weight matrix
+        2D Tensor of recurrent weight matrix.
     H : tensor
-        1D Tensor of afferent inputs per cell
+        1D Tensor of afferent inputs per cell.
     LAM : float
-        Factor by which to multiply the optogentic input strengths
+        Factor by which to multiply the optogentic input strengths.
     E_cond : tensor
-        1D Boolean tensor indicating excitatory cells
+        1D Boolean tensor indicating excitatory cells.
     mult_tau : bool
-        Whether to multiply the input by the time constants of the cells
+        Whether to multiply the input by the time constants of the cells.
     max_min : float
-        Maximum time to run the simulation in minutes
+        Maximum time to run the simulation in minutes.
     method : str, optional
-        Integration method to use (default is "dopri5")
+        Integration method to use (default is "dopri5").
     
     Returns
     -------
     tensor
-        2D Tensor of shape (Ncell x Ntime) with the rates of the cells
+        2D Tensor of shape (Ncell x Ntime) with the rates of the cells.
     bool
-        Whether the simulation reached the maximum time limit
+        Whether the simulation reached the maximum time limit.
     '''
     if callable(H):
         N = len(H(0))
@@ -215,35 +215,35 @@ def calc_lyapunov_exp(ri,T,L,M,H,LAM,E_all,I_all,rates,NLE,TWONS,TONS,mult_tau=F
     Parameters
     ----------
     ri : Ricciardi
-        Ricciardi class object for computing the activation function
+        Ricciardi class object for computing the activation function.
     T : array-like
-        1D Array of time-points to save the rates
+        1D Array of time-points to save the rates.
     L : array-like
-        1D Array of optogenetic input strengths per cell
+        1D Array of optogenetic input strengths per cell.
     M : array-like
-        2D Array of recurrent weight matrix
+        2D Array of recurrent weight matrix.
     H : array-like
-        1D Array of afferent inputs per cell
+        1D Array of afferent inputs per cell.
     LAM : float
-        Factor by which to multiply the optogentic input strengths
+        Factor by which to multiply the optogentic input strengths.
     E_all : array-like
-        Indices of excitatory cells
+        Indices of excitatory cells.
     I_all : array-like
-        Indices of inhibitory cells
+        Indices of inhibitory cells.
     rates : array-like
-        2D Array of shape (Ncell x Ntime) with the rates of the cells
+        2D Array of shape (Ncell x Ntime) with the rates of the cells.
     NLE : int
-        Number of Lyapunov exponents to calculate
+        Number of Lyapunov exponents to calculate.
     TWONS : float
-        Time for warmup prior to computing Lyapunov exponents
+        Time for warmup prior to computing Lyapunov exponents.
     TONS : float
-        Time between measuring Lyapunov exponents
+        Time between measuring Lyapunov exponents.
     mult_tau : bool
-        Whether to multiply the input by the time constants of the cells
+        Whether to multiply the input by the time constants of the cells.
     save_time : bool
-        Whether to save the Lyapunov exponents at each time step
+        Whether to save the Lyapunov exponents at each time step.
     return_Q : bool
-        Whether to return the Q matrix used for the calculation
+        Whether to return the Q matrix used for the calculation.
     
     Returns
     -------
@@ -337,33 +337,33 @@ def calc_lyapunov_exp_tensor(ri,T,L,M,H,LAM,E_cond,rates,NLE,TWONS,TONS,mult_tau
     Parameters
     ----------
     ri : Ricciardi
-        Ricciardi class object for computing the activation function
+        Ricciardi class object for computing the activation function.
     T : tensor
-        1D Tensor of time-points to save the rates
+        1D Tensor of time-points to save the rates.
     L : tensor
-        1D Tensor of optogenetic input strengths per cell
+        1D Tensor of optogenetic input strengths per cell.
     M : tensor
-        2D Tensor of recurrent weight matrix
+        2D Tensor of recurrent weight matrix.
     H : tensor
-        1D Tensor of afferent inputs per cell
+        1D Tensor of afferent inputs per cell.
     LAM : float
-        Factor by which to multiply the optogentic input strengths
+        Factor by which to multiply the optogentic input strengths.
     E_cond : tensor
-        1D Boolean tensor indicating excitatory cells
+        1D Boolean tensor indicating excitatory cells.
     rates : array-like
-        2D Array of shape (Ncell x Ntime) with the rates of the cells
+        2D Array of shape (Ncell x Ntime) with the rates of the cells.
     NLE : int
-        Number of Lyapunov exponents to calculate
+        Number of Lyapunov exponents to calculate.
     TWONS : float
-        Time for warmup prior to computing Lyapunov exponents
+        Time for warmup prior to computing Lyapunov exponents.
     TONS : float
-        Time between measuring Lyapunov exponents
+        Time between measuring Lyapunov exponents.
     mult_tau : bool
-        Whether to multiply the input by the time constants of the cells
+        Whether to multiply the input by the time constants of the cells.
     save_time : bool
-        Whether to save the Lyapunov exponents at each time step
+        Whether to save the Lyapunov exponents at each time step.
     return_Q : bool
-        Whether to return the Q matrix used for the calculation
+        Whether to return the Q matrix used for the calculation.
     
     Returns
     -------

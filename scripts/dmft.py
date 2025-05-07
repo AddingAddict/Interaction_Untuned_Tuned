@@ -2434,7 +2434,36 @@ def diff_sparse_full_ring_dmft(tau,W,K,Hb,Hm,CVH,sW,sH,R_fn,Twrm,Tsav,dt,rs,Crs,
     
     return diff_gauss_struct_dmft(tau,muWs,SigWs,muHs,SigHs,R_fn,mu_fn,Sig_fn,Sigd_fn,Twrm,Tsav,dt,rs,Crs,Cdrs0)
 
-def run_two_stage_dmft(prms,rX,CVh,res_dir,rc,Twrm,Tsav,dt,return_full=False):
+def run_two_stage_dmft(prms,rX,CVH,res_dir,ri,Twrm,Tsav,dt,return_full=False):
+    '''
+    Computes the stationary mean rates and autocorrelation functions without and with an optogenetic perturbation and the optogenetic response autocorrelation function of an unstructured network.
+    
+    Parameters
+    ----------
+    prms : dict
+        Dictionary containing parameters for the network.
+    rX : float
+        The mean firing rate of the external population driving the afferent input.
+    CVH : float
+        The coefficient of variation of the external inputs.
+    res_dir : str
+        The directory containing the precomputed rate moments.
+    ri : Ricciardi
+        Ricciardi class object for computing the activation function
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    return_full : bool, optional
+        If True, return the full time evolution of the mean rates and autocorrelation functions. Default is False.
+        
+    Returns
+    -------
+    dictionary
+        Dictionary containing the rate moments, input statistics, and convergence information.
+    '''
     Nsav = round(Tsav/dt)+1
     
     K = prms["K"]
@@ -2445,11 +2474,10 @@ def run_two_stage_dmft(prms,rX,CVh,res_dir,rc,Twrm,Tsav,dt,return_full=False):
     hE = prms["hE"]
     hI = prms["hI"]
     
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
+    tau = np.array([ri.tE,ri.tI],dtype=np.float32)
     W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
     Ks = np.array([K,K/4],dtype=np.float32)
     H = rX*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    CVH = CVh
     
     muH = tau*H
     SigH = (muH*CVH)**2
@@ -2532,8 +2560,45 @@ def run_two_stage_dmft(prms,rX,CVh,res_dir,rc,Twrm,Tsav,dt,return_full=False):
     
     return res_dict
 
-def run_decoupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
+def run_decoupled_two_site_dmft(prms,rX,cA,CVH,res_dir,ri,Twrm,Tsav,dt,L=180,
                                 struct_dict=None,which="both",return_full=False):
+    '''
+    Computes the stationary mean rates and autocorrelation functions without and with an optogenetic perturbation and the optogenetic response autocorrelation function of a decoupled two-site network.
+    
+    Parameters
+    ----------
+    prms : dict
+        Dictionary containing parameters for the network.
+    rX : float
+        The mean firing rate of the external population driving the baseline afferent input.
+    cA : float
+        The ratio of the firing rate driving the matched afferent input and the firing rate driving the baseline afferent input
+    CVH : float
+        The coefficient of variation of the external inputs.
+    res_dir : str
+        The directory containing the precomputed rate moments.
+    ri : Ricciardi
+        Ricciardi class object for computing the activation function
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+    struct_dict : dict, optional
+        Dictionary containing the result of a call to run_two_stage_ring_dmft, which contains information about the structure of the network activity. Should contain the keys "sr" and "sCr" for the tuning widths of the rate mean and autocorrelation functions, respectively.
+    which : str, optional
+        Flag indicating which rate moments to compute. If "base", then only rate moments without optogenetic input are computed. If "opto", then only rate moments with optogenetic input are computed. If "both", then all rate moments, including the optogenetic response autocorrelation, are computed. Default is "both".
+    return_full : bool, optional
+        If True, return the full time evolution of the mean rates and autocorrelation functions. Default is False.
+        
+    Returns
+    -------
+    dictionary
+        Dictionary containing the rate moments, input statistics, and convergence information.
+    '''
     Nsav = round(Tsav/dt)+1
     
     K = prms["K"]
@@ -2550,13 +2615,12 @@ def run_decoupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
     baseinp = prms.get("baseinp",0)
     baseprob = prms.get("baseprob",0)
     
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
+    tau = np.array([ri.tE,ri.tI],dtype=np.float32)
     W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
     Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
     Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
     Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
     Hm = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    CVH = CVh
     sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
     
     sW2 = sW**2
@@ -2725,8 +2789,49 @@ def run_decoupled_two_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,
     
     return res_dict
 
-def run_decoupled_three_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,dori=45,L=180,
+def run_decoupled_three_site_dmft(prms,rX,cA,CVH,res_dir,ri,Twrm,Tsav,dt,dori=45,L=180,
                                   struct_dict=None,which="both",couple_matched=False,return_full=False):
+    '''
+    Computes the stationary mean rates and autocorrelation functions without and with an optogenetic perturbation and the optogenetic response autocorrelation function of a decoupled three-site network (ie, driven interocularly by two equal-contrast visual stimuli). If couple_matched is True, then the two matched populations are treated as a single coupled site, reducing the network to a two-site network.
+    
+    Parameters
+    ----------
+    prms : dict
+        Dictionary containing parameters for the network.
+    rX : float
+        The mean firing rate of the external population driving the baseline afferent input.
+    cA : float
+        The ratio of the firing rate driving the matched afferent input and the firing rate driving the baseline afferent input
+    CVH : float
+        The coefficient of variation of the external inputs.
+    res_dir : str
+        The directory containing the precomputed rate moments.
+    ri : Ricciardi
+        Ricciardi class object for computing the activation function
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    dori : int, optional
+        The offset between the two visual stimuli. Default is 45 degrees.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+    struct_dict : dict, optional
+        Dictionary containing the result of a call to run_two_stage_ring_dmft, which contains information about the structure of the network activity. Should contain the keys "sr" and "sCr" for the tuning widths of the rate mean and autocorrelation functions, respectively.
+    which : str, optional
+        Flag indicating which rate moments to compute. If "base", then only rate moments without optogenetic input are computed. If "opto", then only rate moments with optogenetic input are computed. If "both", then all rate moments, including the optogenetic response autocorrelation, are computed. Default is "both".
+    couple_matched : bool, optional
+        If True, treat the two matched populations as a single coupled site, reducing the network to a two-site network. Default is False.
+    return_full : bool, optional
+        If True, return the full time evolution of the mean rates and autocorrelation functions. Default is False.
+        
+    Returns
+    -------
+    dictionary
+        Dictionary containing the rate moments, input statistics, and convergence information.
+    '''
     Nsav = round(Tsav/dt)+1
     
     K = prms["K"]
@@ -2743,13 +2848,12 @@ def run_decoupled_three_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,dori=45
     baseinp = prms.get("baseinp",0)
     baseprob = prms.get("baseprob",0)
     
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
+    tau = np.array([ri.tE,ri.tI],dtype=np.float32)
     W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
     Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
     Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
     Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
     Hm = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    CVH = CVh
     sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
     sH = np.array([SoriF,SoriF],dtype=np.float32)
     
@@ -2888,8 +2992,42 @@ def run_decoupled_three_site_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,dori=45
     
     return res_dict
 
-def run_decoupled_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,Nori=20,
-                                struct_dict=None,which="both",return_full=False):
+def run_two_stage_ring_dmft(prms,rX,cA,CVH,res_dir,ri,Twrm,Tsav,dt,sa=15,L=180,return_full=False):
+    '''
+    Computes the stationary mean rates and autocorrelation functions without and with an optogenetic perturbation and the optogenetic response autocorrelation function of a ring network assuming baseline-plus-Gaussian rate moments.
+    
+    Parameters
+    ----------
+    prms : dict
+        Dictionary containing parameters for the network.
+    rX : float
+        The mean firing rate of the external population driving the baseline afferent input.
+    cA : float
+        The ratio of the firing rate driving the matched afferent input and the firing rate driving the baseline afferent input
+    CVH : float
+        The coefficient of variation of the external inputs.
+    res_dir : str
+        The directory containing the precomputed rate moments.
+    ri : Ricciardi
+        Ricciardi class object for computing the activation function
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    sa : int, optional
+        The offset between the visual stimulus location and the auxiliary location used to infer the tuning widths. Default is 15 degrees.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+    return_full : bool, optional
+        If True, return the full time evolution of the mean rates and autocorrelation functions. Default is False.
+        
+    Returns
+    -------
+    dictionary
+        Dictionary containing the rate moments, input statistics, and convergence information.
+    '''
     Nsav = round(Tsav/dt)+1
     
     K = prms["K"]
@@ -2906,149 +3044,12 @@ def run_decoupled_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,Nori=20
     baseinp = prms.get("baseinp",0)
     baseprob = prms.get("baseprob",0)
     
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
+    tau = np.array([ri.tE,ri.tI],dtype=np.float32)
     W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
     Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
     Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
     Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
     Hm = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    CVH = CVh
-    sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
-    sH = np.array([SoriF,SoriF],dtype=np.float32)
-    
-    sW2 = sW**2
-    
-    muW = tau[:,None]*W*Ks
-    SigW = tau[:,None]**2*W**2*Ks
-    muWb = tau[:,None]*W*Kbs
-    SigWb = tau[:,None]**2*W**2*Kbs
-    
-    sr = struct_dict["sr"]
-    sCr = struct_dict["sCr"][:,-1]
-    
-    sWr = np.sqrt(sW2+sr**2)
-    sWCr = np.sqrt(sW2+sCr**2)
-    
-    muWs = np.zeros((Nori,Nori,2,2))
-    SigWs = np.zeros((Nori,Nori,2,2))
-    
-    oris = np.arange(Nori)/Nori * L
-    doris = oris[:,None] - oris[None,:]
-    kerns = wrapnormdens(doris[:,:,None,None],sW[None,None,:,:],L)
-    
-    muWs = (muWb[None,None,:,:] + muW[None,None,:,:]*2*np.pi*kerns) / Nori
-    SigWs = (SigWb[None,None,:,:] + SigW[None,None,:,:]*2*np.pi*kerns) / Nori
-    
-    muWxs = muWs.copy()
-    SigWxs = SigWs.copy()
-    for i in range(Nori):
-        muWxs[i,i] = 0
-        SigWxs[i,i] = 0
-    
-    rs = struct_dict["rb"][None,:] + (struct_dict["rm"]-struct_dict["rb"])[None,:]*\
-        basesubwrapnorm(oris[:,None],sr[None,:])
-    Crs = struct_dict["Crb"][None,:,:] + (struct_dict["Crm"]-struct_dict["Crb"])[None,:,:]*\
-        basesubwrapnorm(oris[:,None,None],sCr[None,:,None])
-    
-    muHs = tau[None,:]*(Hb[None,:] + (Hm-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:])) +\
-        np.einsum("ijkl,jl->ik",muWxs,rs)
-    SigHs = ((tau[None,:]*(Hb[None,:] + (Hm-Hb)[None,:]*basesubwrapnorm(oris[:,None],sH[None,:]))*CVH)**2)[:,:,None] +\
-        np.einsum("ijkl,jlm->ikm",SigWxs,Crs)
-    
-    FE,FI,ME,MI,CE,CI = base_itp_moments(res_dir)
-    FL,ML,CL = opto_itp_moments(res_dir,prms["L"],prms["CVL"])
-    
-    def base_M(mui,Sigii,out):
-        out[0] = ME(mui[0],Sigii[0])[0]
-        out[1] = MI(mui[1],Sigii[1])[0]
-        
-    def base_C(mui,Sigii,Sigij,out):
-        out[0] = CE(mui[0],Sigii[0],Sigij[0])[0]
-        out[1] = CI(mui[1],Sigii[1],Sigij[1])[0]
-    
-    def opto_M(mui,Sigii,out):
-        out[0] = ML(mui[0],Sigii[0])[0]
-        out[1] = MI(mui[1],Sigii[1])[0]
-        
-    def opto_C(mui,Sigii,Sigij,out):
-        out[0] = CL(mui[0],Sigii[0],Sigij[0])[0]
-        out[1] = CI(mui[1],Sigii[1],Sigij[1])[0]
-    
-    start = time.process_time()
-    
-    full_rs = [None]*20
-    full_Crs = [None]*20
-    convs = [None]*20
-    
-    if which=="base":
-        for i in range(Nori):
-            full_rs[i],full_Crs[i],convs[i] = gauss_dmft(tau,muWs[i,i],SigWs[i,i],muHs[i],SigHs[i],
-                                                         base_M,base_C,Twrm,Tsav,dt)
-    elif which=="opto":
-        for i in range(Nori):
-            full_rs[i],full_Crs[i],convs[i] = gauss_dmft(tau,muWs[i,i],SigWs[i,i],muHs[i],SigHs[i],
-                                                         opto_M,opto_C,Twrm,Tsav,dt)
-    else:
-        raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\" and \"opto\"")
-        
-    print("integrating first stage took",time.process_time() - start,"s")
-
-    # extract predicted moments after long time evolution
-    for i in range(Nori):
-        rs[i] = full_rs[i][:,-1]
-        Crs[i] = full_Crs[i][:,-1,-1:-Nsav-1:-1]
-    
-    if which in ("base","opto"):
-        mus = np.zeros_like(rs)
-        Sigs = np.zeros_like(Crs)
-        for i in range(Nori):
-            mus[i] = muWs[i,i]@rs[i] + muHs[i]
-            Sigs[i] = SigWs[i,i]@Crs[i] + SigHs[i]
-    else:
-        raise NotImplementedError("Only implemented options for \"which\" keyword are: \"base\", \"opto\", and \"both\"")
-    
-    res_dict = {}
-    
-    res_dict["rs"] = rs
-    res_dict["sr"] = sr
-    res_dict["Crs"] = Crs
-    res_dict["sCr"] = sCr
-    
-    res_dict["mus"] = mus
-    res_dict["Sigs"] = Sigs
-    
-    res_dict["convs"] = convs
-    
-    if return_full:
-        res_dict["full_rs"] = full_rs
-        res_dict["full_Crs"] = full_Crs
-    
-    return res_dict
-
-def run_two_stage_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,L=180,return_full=False):
-    Nsav = round(Tsav/dt)+1
-    
-    K = prms["K"]
-    SoriE = prms["SoriE"]
-    SoriI = prms["SoriI"]
-    SoriF = prms["SoriF"]
-    J = prms["J"]
-    beta = prms["beta"]
-    gE = prms["gE"]
-    gI = prms["gI"]
-    hE = prms["hE"]
-    hI = prms["hI"]
-    basefrac = prms.get("basefrac",0)
-    baseinp = prms.get("baseinp",0)
-    baseprob = prms.get("baseprob",0)
-    
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
-    W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
-    Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
-    Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
-    Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    Hm = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    CVH = CVh
     sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
     sH = np.array([SoriF,SoriF],dtype=np.float32)
     
@@ -3208,7 +3209,44 @@ def run_two_stage_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,L=180,r
     
     return res_dict
 
-def run_two_stage_2feat_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,dori=45,L=180,return_full=False):
+def run_two_stage_2feat_ring_dmft(prms,rX,cA,CVH,res_dir,ri,Twrm,Tsav,dt,sa=15,dori=45,L=180,return_full=False):
+    '''
+    Computes the stationary mean rates and autocorrelation functions without and with an optogenetic perturbation and the optogenetic response autocorrelation function of a ring network driven interocularly by two equal-contrast visual stimuli assuming baseline-plus-Gaussian-mixture rate moments.
+    
+    Parameters
+    ----------
+    prms : dict
+        Dictionary containing parameters for the network.
+    rX : float
+        The mean firing rate of the external population driving the baseline afferent input.
+    cA : float
+        The ratio of the firing rate driving the matched afferent input and the firing rate driving the baseline afferent input
+    CVH : float
+        The coefficient of variation of the external inputs.
+    res_dir : str
+        The directory containing the precomputed rate moments.
+    ri : Ricciardi
+        Ricciardi class object for computing the activation function
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    sa : int, optional
+        The offset between the visual stimulus location and the auxiliary location used to infer the tuning widths. Default is 15 degrees.
+    dori : int, optional
+        The offset between the two visual stimuli. Default is 45 degrees.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+    return_full : bool, optional
+        If True, return the full time evolution of the mean rates and autocorrelation functions. Default is False.
+        
+    Returns
+    -------
+    dictionary
+        Dictionary containing the rate moments, input statistics, and convergence information.
+    '''
     Nsav = round(Tsav/dt)+1
     
     K = prms["K"]
@@ -3225,13 +3263,12 @@ def run_two_stage_2feat_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,d
     baseinp = prms.get("baseinp",0)
     baseprob = prms.get("baseprob",0)
     
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
+    tau = np.array([ri.tE,ri.tI],dtype=np.float32)
     W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
     Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
     Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
     Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
     Hm = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    CVH = CVh
     sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
     sH = np.array([SoriF,SoriF],dtype=np.float32)
     
@@ -3397,8 +3434,45 @@ def run_two_stage_2feat_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,sa=15,d
     
     return res_dict
 
-def run_two_stage_full_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,Nori=20,
-                                 which="both",return_full=False):    
+def run_two_stage_full_ring_dmft(prms,rX,cA,CVH,res_dir,ri,Twrm,Tsav,dt,L=180,Nori=20,
+                                 which="both",return_full=False):
+    '''
+    Computes the stationary mean rates and autocorrelation functions without and with an optogenetic perturbation and the optogenetic response autocorrelation function of a discrete ring network.
+    
+    Parameters
+    ----------
+    prms : dict
+        Dictionary containing parameters for the network.
+    rX : float
+        The mean firing rate of the external population driving the baseline afferent input.
+    cA : float
+        The ratio of the firing rate driving the matched afferent input and the firing rate driving the baseline afferent input
+    CVH : float
+        The coefficient of variation of the external inputs.
+    res_dir : str
+        The directory containing the precomputed rate moments.
+    ri : Ricciardi
+        Ricciardi class object for computing the activation function
+    Twrm : float
+        Time over which to warm up the system.
+    Tsav : float
+        Time over which to save the autocorrelation function.
+    dt : float
+        Time step.
+    L : int, optional
+        Size of periodic dimension. Default is 180.
+    Nori : int, optional
+        Number of discrete orientation sites. Default is 20.
+    which : str, optional
+        Flag indicating which rate moments to compute. If "base", then only rate moments without optogenetic input are computed. If "opto", then only rate moments with optogenetic input are computed. If "both", then all rate moments, including the optogenetic response autocorrelation, are computed. Default is "both".
+    return_full : bool, optional
+        If True, return the full time evolution of the mean rates and autocorrelation functions. Default is False.
+        
+    Returns
+    -------
+    dictionary
+        Dictionary containing the rate moments, input statistics, and convergence information.
+    '''
     Nsav = round(Tsav/dt)+1
     
     K = prms["K"]
@@ -3415,13 +3489,12 @@ def run_two_stage_full_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,No
     baseinp = prms.get("baseinp",0)
     baseprob = prms.get("baseprob",0)
     
-    tau = np.array([rc.tE,rc.tI],dtype=np.float32)
+    tau = np.array([ri.tE,ri.tI],dtype=np.float32)
     W = J*np.array([[1,-gE],[1./beta,-gI/beta]],dtype=np.float32)
     Ks =    (1-basefrac)*(1-baseprob) *np.array([K,K/4],dtype=np.float32)
     Kbs =(1-(1-basefrac)*(1-baseprob))*np.array([K,K/4],dtype=np.float32)
     Hb = rX*(1+(1-(1-basefrac)*(1-baseinp))*cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
     Hm = rX*(1+                             cA)*K*J*np.array([hE,hI/beta],dtype=np.float32)
-    CVH = CVh
     sW = np.array([[SoriE,SoriI],[SoriE,SoriI]],dtype=np.float32)
     sH = np.array([SoriF,SoriF],dtype=np.float32)
     
@@ -3532,6 +3605,39 @@ def run_two_stage_full_ring_dmft(prms,rX,cA,CVh,res_dir,rc,Twrm,Tsav,dt,L=180,No
     return res_dict
 
 def lin_resp_mats(tau,muW,SigW,dmuH,dSigH,M_fn,C_fn,Tsav,dt,mu,Sig):
+    '''
+    Compute the time-discretized tensors used to compute the linear response.
+    
+    Parameters
+    ----------
+    tau : array_like
+        1D Array of time constants per cell type.
+    muW : array_like
+        2D Array of mean total weights per connection type.
+    SigW : array_like
+        2D Array of variance of total weights per connection type.
+    dmuH : array_like
+        1D Array of perturbation-induced changes in mean external input per cell type.
+    dSigH : array_like
+        1D Array of perturbation-induced changes in variance of external input per cell type.
+    M_fn : function
+        Function to compute the mean rates. It should take as input the 1D arrays of the mean and variance of the net input, and a 1D array to where the computed mean rates will be stored.
+    C_fn : function
+        Function to compute the autocorrelation of the rates. It should take as input the 1D arrays of the mean, variance, and covariance of the net inputs, and a 1D array to where the computed autocorrelation of the rates will be stored.
+    Tsav : float
+        Time over which the autocorrelation function was saved.
+    dt : float
+        Time step.
+    r0 : array_like, optional
+        Initial condition for the mean rates. If None, defaults to 1e-8 for all cell types.
+    Cr0 : array_like, optional
+        Initial condition for the autocorrelation function. If None, defaults to 1e2 for all cell types for all time lags.
+        
+    Returns
+    -------
+    dictionary
+        Dictionary containing the rate moment Jacobian sub-block tensors and the driving terms in the linear response, in addition to the quantities used to compute these tensors.
+    '''
     Ntyp = len(dmuH)
     Nsav = round(Tsav/dt)+1
     
